@@ -6,8 +6,10 @@ const prisma = new PrismaClient();
 // Senha padrão de todos os usuários semeados (documentada no README): "senha123"
 const SEED_PASSWORD = 'senha123';
 
+const BCRYPT_ROUNDS = 12;
+
 async function upsertUser(email: string, name: string, role: Role) {
-  const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10);
+  const passwordHash = await bcrypt.hash(SEED_PASSWORD, BCRYPT_ROUNDS);
 
   return prisma.user.upsert({
     where: { email },
