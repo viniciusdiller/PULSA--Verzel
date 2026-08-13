@@ -1,0 +1,188 @@
+// Plataforma de Eventos e Ingressos — schema Prisma
+// Convenções: id UUID, @db.Timestamptz(6) em datas, camelCase, enums UPPER_SNAKE_CASE
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ORGANIZER
+  CUSTOMER
+  GATE_STAFF
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  HELD
+  SOLD
+}
+
+enum ReservationStatus {
+  HOLDING
+  PAID
+  DECLINED
+  EXPIRED
+  CANCELED
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  VOID
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+
+  eventsOrganized Event[]       @relation("EventOrganizer")
+  reservations    Reservation[] @relation("ReservationCustomer")
+  ticketsOwned    Ticket[]      @relation("TicketOwner")
+  gateValidations Ticket[]      @relation("TicketGateValidator")
+
+  @@index([role])
+  @@map("users")
+}
+
+model Event {
+  id          String @id @default(uuid())
+  title       String
+  description String @db.Text
+  imageUrl    String?
+  startsAt    DateTime @db.Timestamptz(6)
+
+  venueName    String
+  venueCity    String
+  venueAddress String
+
+  externalSource String @default("TICKETMASTER")
+  externalId     String @unique
+  externalRaw    Json?
+
+  organizerId String
+  organizer   User   @relation("EventOrganizer", fields: [organizerId], references: [id])
+
+  capacity Int         @default(0)
+  status   EventStatus @default(DRAFT)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  sections     Section[]
+  seats        Seat[]
+  reservations Reservation[]
+  tickets      Ticket[]
+
+  @@index([organizerId])
+  @@index([status])
+  @@map("events")
+}
+
+model Section {
+  id          String @id @default(uuid())
+  eventId     String
+  event       Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  priceCents  Int
+  rowsCount   Int
+  seatsPerRow Int
+  colorHex    String @default("#D4A73A")
+
+  seats Seat[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@map("sections")
+}
+
+model Seat {
+  id        String     @id @default(uuid())
+  sectionId String
+  section   Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  row       String
+  number    Int
+  label     String
+  status    SeatStatus @default(AVAILABLE)
+
+  reservations Reservation[]
+  ticket       Ticket?
+
+  @@unique([sectionId, row, number])
+  @@index([eventId])
+  @@index([eventId, status])
+  @@map("seats")
+}
+
+model Reservation {
+  id     String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+  seatId  String
+  seat    Seat   @relation(fields: [seatId], references: [id])
+
+  customerId String
+  customer   User   @relation("ReservationCustomer", fields: [customerId], references: [id])
+
+  status               ReservationStatus @default(HOLDING)
+  holdExpiresAt         DateTime?         @db.Timestamptz(6)
+  totalCents            Int
+  paymentCardLast4      String?
+  paymentDeclineReason  String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  ticket Ticket?
+
+  @@index([seatId])
+  @@index([customerId])
+  @@index([status, holdExpiresAt])
+  @@map("reservations")
+}
+
+model Ticket {
+  id            String      @id @default(uuid())
+  reservationId String      @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+  eventId       String
+  event         Event       @relation(fields: [eventId], references: [id])
+  seatId        String      @unique
+  seat          Seat        @relation(fields: [seatId], references: [id])
+
+  ownerId String
+  owner   User   @relation("TicketOwner", fields: [ownerId], references: [id])
+
+  serial String       @unique
+  status TicketStatus @default(VALID)
+
+  usedAt           DateTime? @db.Timestamptz(6)
+  usedByGateUserId String?
+  usedByGateUser   User?     @relation("TicketGateValidator", fields: [usedByGateUserId], references: [id])
+
+  shareSlug String @unique
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([shareSlug])
+  @@index([ownerId])
+  @@map("tickets")
+}
