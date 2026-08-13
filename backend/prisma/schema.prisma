@@ -171,8 +171,9 @@ model Ticket {
   ownerId String
   owner   User   @relation("TicketOwner", fields: [ownerId], references: [id])
 
-  serial String       @unique
-  status TicketStatus @default(VALID)
+  serial  String       @unique
+  qrToken String       @unique @db.Text
+  status  TicketStatus @default(VALID)
 
   usedAt           DateTime? @db.Timestamptz(6)
   usedByGateUserId String?
