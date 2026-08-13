@@ -1,0 +1,77 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { EventsService } from './events.service';
+import { CreateEventDto } from './dto/create-event.dto';
+import { EventListQueryDto } from './dto/event-list-query.dto';
+import { Public } from '../common/decorators/public.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+
+@ApiTags('events')
+@Controller('events')
+export class EventsController {
+  constructor(private readonly eventsService: EventsService) {}
+
+  @Post()
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Organizador cria um evento (rascunho) com suas seções/assentos',
+  })
+  create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateEventDto) {
+    return this.eventsService.create(user.id, dto);
+  }
+
+  @Patch(':id/publish')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Publica um evento em rascunho (só o organizador dono)',
+  })
+  publish(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.publish(user.id, id);
+  }
+
+  @Public()
+  @Get()
+  @ApiOperation({
+    summary: 'Lista eventos publicados, com busca por título/cidade',
+  })
+  findPublished(@Query() query: EventListQueryDto) {
+    return this.eventsService.findPublished(query);
+  }
+
+  @Get('organizer/mine')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Lista os eventos do organizador autenticado (qualquer status)',
+  })
+  findMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.eventsService.findMine(user.id);
+  }
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({
+    summary:
+      'Detalhe de um evento publicado (rascunhos não aparecem aqui — o organizador usa /events/organizer/mine)',
+  })
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.eventsService.findPublishedById(id);
+  }
+}
