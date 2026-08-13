@@ -6,6 +6,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -20,6 +21,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
     PrismaModule,
     AuthModule,
     EventsModule,
+    CatalogModule,
   ],
   controllers: [HealthController],
   providers: [
