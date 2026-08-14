@@ -37,3 +37,15 @@ export function roleHomePath(role: Role): string {
       return "/my-tickets";
   }
 }
+
+export function roleLabel(role: Role): string {
+  switch (role) {
+    case "ORGANIZER":
+      return "Organizador";
+    case "GATE_STAFF":
+      return "Portaria";
+    case "CUSTOMER":
+    default:
+      return "Cliente";
+  }
+}

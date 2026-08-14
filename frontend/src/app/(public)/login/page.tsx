@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,7 @@ import { z } from "zod";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 
+import { useAuth } from "@/hooks/use-auth";
 import { apiClient } from "@/lib/api-client";
 import { saveSession, roleHomePath, type AuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,14 @@ interface LoginResponse {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace(roleHomePath(user.role));
+    }
+  }, [isLoading, user, router]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
