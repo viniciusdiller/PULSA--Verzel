@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 // Display/heading — "cartaz de show": condensada o suficiente pra nomes
 // longos de line-up sem perder impacto (ver identidade PULSA no plano).
@@ -35,11 +36,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${spaceGrotesk.variable} ${manrope.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col pb-20 sm:pb-0">
         <Providers>
           <SiteHeader />
           {children}
           <SiteFooter />
+          <MobileBottomNav />
         </Providers>
       </body>
     </html>

@@ -33,13 +33,16 @@ export function SiteHeader() {
           />
         </Link>
 
+        {/* No mobile a navegação principal e o logout vivem na barra
+            inferior (MobileBottomNav) — o header fica só com marca +
+            tema, evitando duplicar a mesma ação em dois lugares. */}
         <nav className="flex items-center gap-2">
           {isLoading ? null : user ? (
             <>
               <Link
                 href={roleHomePath(user.role)}
                 className={cn(
-                  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground",
+                  "hidden rounded-full px-3 py-1.5 text-sm font-medium transition-colors hover:cursor-pointer hover:bg-muted hover:text-foreground sm:block",
                   pathname === roleHomePath(user.role)
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground",
@@ -47,18 +50,18 @@ export function SiteHeader() {
               >
                 {roleNavLabel(user.role)}
               </Link>
-              <div className="mx-1 flex items-center gap-2">
+              <div className="mx-1 hidden items-center gap-2 sm:flex">
                 <span className="text-sm text-foreground">{user.name}</span>
                 <Badge variant="outline">{roleLabel(user.role)}</Badge>
               </div>
-              <Button variant="ghost" size="sm" onClick={logout}>
+              <Button variant="ghost" size="sm" onClick={logout} className="hidden sm:inline-flex">
                 Sair
               </Button>
               <ThemeToggle />
             </>
           ) : (
             <>
-              <Button asChild size="sm">
+              <Button asChild size="sm" className="hidden sm:inline-flex">
                 <Link href="/login">Entrar</Link>
               </Button>
               <ThemeToggle />
