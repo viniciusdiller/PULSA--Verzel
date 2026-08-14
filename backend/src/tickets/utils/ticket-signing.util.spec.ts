@@ -2,7 +2,9 @@ import jwt from 'jsonwebtoken';
 import {
   generateSerial,
   generateShareSlug,
+  generateShortCode,
   InvalidTicketQrError,
+  SHORT_CODE_PATTERN,
   signTicketQr,
   verifyTicketQr,
 } from './ticket-signing.util';
@@ -102,5 +104,20 @@ describe('generateShareSlug', () => {
 
     const slug = generateShareSlug();
     expect(slug).not.toMatch(/[+/=]/);
+  });
+});
+
+describe('generateShortCode', () => {
+  it('gera sempre 6 dígitos numéricos, com zero à esquerda quando necessário', () => {
+    for (let i = 0; i < 200; i += 1) {
+      expect(generateShortCode()).toMatch(SHORT_CODE_PATTERN);
+    }
+  });
+
+  it('varia entre chamadas (não é um valor fixo)', () => {
+    const values = new Set(
+      Array.from({ length: 50 }, () => generateShortCode()),
+    );
+    expect(values.size).toBeGreaterThan(1);
   });
 });

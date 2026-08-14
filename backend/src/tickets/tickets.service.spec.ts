@@ -14,7 +14,10 @@ describe('TicketsService', () => {
   let configService: { getOrThrow: jest.Mock };
   let prisma: { ticket: { findMany: jest.Mock; findUnique: jest.Mock } };
   let tx: {
-    ticket: { create: jest.Mock<Promise<Ticket>, [TicketCreateArgs]> };
+    ticket: {
+      create: jest.Mock<Promise<Ticket>, [TicketCreateArgs]>;
+      findUnique: jest.Mock;
+    };
   };
 
   const reservation = {
@@ -34,6 +37,9 @@ describe('TicketsService', () => {
           .mockImplementation((args) =>
             Promise.resolve(args.data as unknown as Ticket),
           ),
+        // Sem colisão por padrão — cada teste que quiser simular colisão
+        // de shortCode sobrescreve isso explicitamente.
+        findUnique: jest.fn().mockResolvedValue(null),
       },
     };
     service = new TicketsService(
@@ -58,6 +64,7 @@ describe('TicketsService', () => {
       expect(createArgs.ownerId).toBe('cust-1');
       expect(typeof createArgs.serial).toBe('string');
       expect(typeof createArgs.shareSlug).toBe('string');
+      expect(createArgs.shortCode).toMatch(/^\d{6}$/);
 
       const decoded = verifyTicketQr(createArgs.qrToken as string, SECRET);
       expect(decoded).toEqual({
@@ -84,6 +91,34 @@ describe('TicketsService', () => {
       expect(first.serial).not.toBe(second.serial);
       expect(first.shareSlug).not.toBe(second.shareSlug);
       expect(first.qrToken).not.toBe(second.qrToken);
+    });
+
+    it('tenta novamente ao gerar um shortCode que já existe, até achar um livre', async () => {
+      tx.ticket.findUnique
+        .mockResolvedValueOnce({ id: 'colisao-1' })
+        .mockResolvedValueOnce({ id: 'colisao-2' })
+        .mockResolvedValueOnce(null);
+
+      await service.issueForReservation(
+        tx as unknown as Prisma.TransactionClient,
+        reservation,
+      );
+
+      expect(tx.ticket.findUnique).toHaveBeenCalledTimes(3);
+      expect(tx.ticket.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('desiste após esgotar as tentativas se todo shortCode gerado já existir', async () => {
+      tx.ticket.findUnique.mockResolvedValue({ id: 'sempre-colide' });
+
+      await expect(
+        service.issueForReservation(
+          tx as unknown as Prisma.TransactionClient,
+          reservation,
+        ),
+      ).rejects.toThrow(/código curto único/);
+
+      expect(tx.ticket.create).not.toHaveBeenCalled();
     });
   });
 

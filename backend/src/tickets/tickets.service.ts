@@ -6,8 +6,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   generateSerial,
   generateShareSlug,
+  generateShortCode,
   signTicketQr,
 } from './utils/ticket-signing.util';
+
+// Espaço de busca é só 10^6 — em volumes de teste/demo a chance de colisão
+// por tentativa é desprezível, mas o retry existe para não deixar a emissão
+// do ingresso quebrar na (rara) vez que colidir.
+const SHORT_CODE_MAX_ATTEMPTS = 5;
 
 @Injectable()
 export class TicketsService {
@@ -28,6 +34,7 @@ export class TicketsService {
     const ticketId = randomUUID();
     const serial = generateSerial();
     const shareSlug = generateShareSlug();
+    const shortCode = await this.generateUniqueShortCode(tx);
     const qrToken = signTicketQr(
       { ticketId, eventId: reservation.eventId, serial },
       secret,
@@ -42,9 +49,28 @@ export class TicketsService {
         ownerId: reservation.customerId,
         serial,
         qrToken,
+        shortCode,
         shareSlug,
       },
     });
+  }
+
+  private async generateUniqueShortCode(
+    tx: Prisma.TransactionClient,
+  ): Promise<string> {
+    for (let attempt = 0; attempt < SHORT_CODE_MAX_ATTEMPTS; attempt += 1) {
+      const candidate = generateShortCode();
+      const existing = await tx.ticket.findUnique({
+        where: { shortCode: candidate },
+        select: { id: true },
+      });
+      if (!existing) {
+        return candidate;
+      }
+    }
+    throw new Error(
+      'Não foi possível gerar um código curto único para o ingresso.',
+    );
   }
 
   async findMine(ownerId: string) {

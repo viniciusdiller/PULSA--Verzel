@@ -20,6 +20,7 @@ export interface TicketWithDetails {
   seatId: string;
   serial: string;
   qrToken: string;
+  shortCode: string;
   status: "VALID" | "USED" | "VOID";
   usedAt: string | null;
   usedByGateUserId: string | null;
