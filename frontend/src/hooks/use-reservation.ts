@@ -11,14 +11,8 @@ export function useHoldSeatMutation(eventId: string) {
       );
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["events", eventId, "seatmap"] });
-      // Pagamento aprovado emite um ticket na hora — sem isso, "Meus
-      // ingressos" continuaria mostrando a lista antiga em cache até um
-      // reload manual, mesmo já tendo navegado por lá antes nesta sessão.
-      if (data.ticket) {
-        void queryClient.invalidateQueries({ queryKey: ["tickets", "mine"] });
-      }
     },
   });
 }
@@ -44,8 +38,14 @@ export function usePayReservationMutation(eventId: string) {
       });
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["events", eventId, "seatmap"] });
+      // Pagamento aprovado emite um ticket na hora — sem isso, "Meus
+      // ingressos" continuaria mostrando a lista antiga em cache até um
+      // reload manual, mesmo já tendo navegado por lá antes nesta sessão.
+      if (data.ticket) {
+        void queryClient.invalidateQueries({ queryKey: ["tickets", "mine"] });
+      }
     },
   });
 }
