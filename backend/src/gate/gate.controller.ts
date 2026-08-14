@@ -1,5 +1,6 @@
 import { Body, Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { GateService } from './gate.service';
 import { ValidateTicketDto } from './dto/validate-ticket.dto';
@@ -15,6 +16,10 @@ export class GateController {
   constructor(private readonly gateService: GateService) {}
 
   @Post('events/:eventId/validate')
+  // Código curto (6 dígitos) tem um espaço de busca pequeno (10^6); um
+  // limite mais apertado que o default global (60/min) reduz a viabilidade
+  // de uma tentativa de força-bruta por uma conta de portaria comprometida.
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary:
       'Valida um ingresso na entrada do evento (QR ou código digitado manualmente)',

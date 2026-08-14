@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Ticket, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  SHORT_CODE_PATTERN,
   TicketQrPayload,
   verifyTicketQr,
 } from '../tickets/utils/ticket-signing.util';
@@ -48,28 +49,15 @@ export class GateService {
     }
 
     const secret = this.configService.getOrThrow<string>('QR_SIGNING_SECRET');
+    // Aceita espaços (ex. "482 913" digitado no balcão) só pro caminho do
+    // código curto — o JWT nunca tem espaço, então não afeta esse caminho.
     const code = rawCode.trim();
 
-    let payload: TicketQrPayload;
-    try {
-      payload = verifyTicketQr(code, secret);
-    } catch {
-      return { outcome: 'INVALID', message: 'Código inválido ou adulterado.' };
-    }
+    const ticket = SHORT_CODE_PATTERN.test(code.replace(/\s+/g, ''))
+      ? await this.findByShortCode(code.replace(/\s+/g, ''))
+      : await this.findByQrToken(code, secret);
 
-    const ticket = await this.prisma.ticket.findUnique({
-      where: { id: payload.ticketId },
-      include: {
-        seat: { select: { label: true } },
-        event: { select: { title: true } },
-      },
-    });
-
-    // O serial também precisa bater com o do banco — não é só "o JWT tem
-    // assinatura válida", é "esse JWT corresponde exatamente ao ingresso
-    // que emitimos" (defesa extra, ainda que na prática o ticketId já seja
-    // um UUID único o suficiente).
-    if (!ticket || ticket.serial !== payload.serial) {
+    if (!ticket) {
       return { outcome: 'INVALID', message: 'Código inválido ou adulterado.' };
     }
 
@@ -137,6 +125,48 @@ export class GateService {
       usedAt: now,
       usedByGateUserId: gateUserId,
     };
+  }
+
+  private async findByShortCode(
+    shortCode: string,
+  ): Promise<TicketWithRelations | null> {
+    return this.prisma.ticket.findUnique({
+      where: { shortCode },
+      include: {
+        seat: { select: { label: true } },
+        event: { select: { title: true } },
+      },
+    });
+  }
+
+  private async findByQrToken(
+    token: string,
+    secret: string,
+  ): Promise<TicketWithRelations | null> {
+    let payload: TicketQrPayload;
+    try {
+      payload = verifyTicketQr(token, secret);
+    } catch {
+      return null;
+    }
+
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: payload.ticketId },
+      include: {
+        seat: { select: { label: true } },
+        event: { select: { title: true } },
+      },
+    });
+
+    // O serial também precisa bater com o do banco — não é só "o JWT tem
+    // assinatura válida", é "esse JWT corresponde exatamente ao ingresso
+    // que emitimos" (defesa extra, ainda que na prática o ticketId já seja
+    // um UUID único o suficiente).
+    if (!ticket || ticket.serial !== payload.serial) {
+      return null;
+    }
+
+    return ticket;
   }
 
   private summarize(ticket: TicketWithRelations): GateTicketSummary {

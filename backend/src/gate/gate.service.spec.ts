@@ -204,6 +204,47 @@ describe('GateService', () => {
     });
   });
 
+  it('valida com sucesso usando o código curto de 6 dígitos digitado manualmente', async () => {
+    prisma.ticket.findUnique.mockResolvedValue({
+      ...baseTicket,
+      shortCode: '482913',
+    });
+    prisma.ticket.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.validate(EVENT_ID, '482913', 'gate-1');
+
+    expect(result.outcome).toBe('VALID');
+    expect(prisma.ticket.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { shortCode: '482913' } }),
+    );
+  });
+
+  it('aceita o código curto com espaços (ex. colado com espaço no meio)', async () => {
+    prisma.ticket.findUnique.mockResolvedValue({
+      ...baseTicket,
+      shortCode: '482913',
+    });
+    prisma.ticket.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.validate(EVENT_ID, '  482 913  ', 'gate-1');
+
+    expect(result.outcome).toBe('VALID');
+  });
+
+  it('retorna INVALID quando o código curto não corresponde a nenhum ingresso', async () => {
+    prisma.ticket.findUnique.mockResolvedValue(null);
+
+    const result = await service.validate(EVENT_ID, '000000', 'gate-1');
+
+    expect(result.outcome).toBe('INVALID');
+  });
+
+  it('não confunde uma string de 6 caracteres não numéricos com um código curto (tenta como JWT)', async () => {
+    const result = await service.validate(EVENT_ID, 'abcdef', 'gate-1');
+
+    expect(result.outcome).toBe('INVALID');
+  });
+
   it('trata como ALREADY_USED quando duas validações concorrentes disputam o mesmo ingresso (count=0)', async () => {
     prisma.ticket.findUnique.mockResolvedValue(baseTicket);
     prisma.ticket.updateMany.mockResolvedValue({ count: 0 });
