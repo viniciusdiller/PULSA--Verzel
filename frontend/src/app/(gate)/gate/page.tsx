@@ -11,6 +11,7 @@ import { GateResult } from "@/components/gate/gate-result";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatEventDateTime } from "@/lib/format";
@@ -129,7 +130,11 @@ export default function GatePage() {
               placeholder="Cole ou digite o código do ingresso"
             />
             <Button type="submit" disabled={validateMutation.isPending}>
-              Validar
+              {validateMutation.isPending ? (
+                <LoaderSignalBars size="sm" />
+              ) : (
+                "Validar"
+              )}
             </Button>
           </form>
         </TabsContent>

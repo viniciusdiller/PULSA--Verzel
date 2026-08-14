@@ -49,11 +49,11 @@ export function SeatMap({
                 </span>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2 overflow-x-auto pb-1 sm:space-y-1.5">
                 {Array.from(rows.entries()).map(([row, seats]) => (
-                  <div key={row} className="flex items-center gap-1.5">
+                  <div key={row} className="flex items-center gap-2 sm:gap-1.5">
                     <span className="w-5 shrink-0 text-xs text-muted-foreground">{row}</span>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2 sm:gap-1.5">
                       {seats.map((seat) => {
                         const isPending = seat.id === pendingSeatId;
                         const isAvailable = seat.status === "AVAILABLE";
@@ -66,10 +66,13 @@ export function SeatMap({
                             disabled={!isAvailable || disabled || isPending}
                             onClick={() => onSelectSeat(seat)}
                             className={cn(
-                              "flex h-7 w-7 items-center justify-center rounded-md text-[10px] transition-all active:scale-90",
+                              // 36px no mobile (perto do mínimo de 44px de alvo de
+                              // toque recomendado), volta a 28px no desktop — lá
+                              // o cursor é preciso, não precisa do mesmo espaço.
+                              "flex h-9 w-9 items-center justify-center rounded-md text-[10px] transition-all active:scale-90 sm:h-7 sm:w-7",
                               isAvailable &&
                                 !disabled &&
-                                "border-2 border-violet/50 text-violet hover:border-violet hover:bg-violet/10",
+                                "cursor-pointer border-2 border-violet/50 text-violet hover:border-violet hover:bg-violet/10",
                               seat.status === "HELD" &&
                                 "cursor-not-allowed bg-muted text-muted-foreground/50",
                               seat.status === "SOLD" &&
