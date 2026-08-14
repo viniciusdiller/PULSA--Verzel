@@ -33,6 +33,11 @@ export function TicketCard({
     toast.success("Link copiado.");
   }
 
+  async function copyCode() {
+    await navigator.clipboard.writeText(ticket.qrToken);
+    toast.success("Código copiado.");
+  }
+
   return (
     <Card className="overflow-hidden">
       <CardContent className="flex flex-col items-center gap-4 py-6 text-center sm:flex-row sm:items-start sm:text-left">
@@ -55,6 +60,24 @@ export function TicketCard({
               Utilizado em {formatEventDateTime(ticket.usedAt)}
             </p>
           )}
+
+          <div className="mt-2 space-y-1">
+            <p className="text-xs tracking-wide text-muted-foreground uppercase">
+              Código do ingresso
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="max-w-[220px] truncate rounded bg-muted px-2 py-1 text-xs sm:max-w-[280px]">
+                {ticket.qrToken}
+              </code>
+              <Button variant="outline" size="sm" onClick={copyCode}>
+                Copiar código
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use este código na opção &quot;Digitar código&quot; da portaria, caso o QR não possa
+              ser lido.
+            </p>
+          </div>
 
           {showShareButton && (
             <Button variant="outline" size="sm" onClick={copyShareLink} className="mt-2">
