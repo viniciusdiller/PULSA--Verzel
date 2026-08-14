@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'crypto';
+import { randomBytes, randomInt, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
 export interface TicketQrPayload {
@@ -25,6 +25,19 @@ export function generateSerial(): string {
 // contém o id interno do ingresso.
 export function generateShareSlug(): string {
   return randomBytes(9).toString('base64url');
+}
+
+const SHORT_CODE_LENGTH = 6;
+export const SHORT_CODE_PATTERN = /^\d{6}$/;
+
+// Alternativa curta ao qrToken (JWT) só para digitação manual na portaria.
+// Números puros, sem letra ambígua (O/0, I/1) para ler em voz alta/digitar
+// no balcão. Unicidade é garantida pelo caller via índice único + retry,
+// não aqui (crypto.randomInt não tem como saber o que já existe no banco).
+export function generateShortCode(): string {
+  return randomInt(0, 10 ** SHORT_CODE_LENGTH)
+    .toString()
+    .padStart(SHORT_CODE_LENGTH, '0');
 }
 
 export function signTicketQr(payload: TicketQrPayload, secret: string): string {
