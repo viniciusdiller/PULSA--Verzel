@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -44,5 +45,17 @@ export class ReservationsController {
     @Body() dto: PayReservationDto,
   ) {
     return this.reservationsService.pay(user.id, id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary:
+      'Cancela uma reserva em hold antes do pagamento, liberando o assento na hora',
+  })
+  cancel(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.reservationsService.cancel(user.id, id);
   }
 }

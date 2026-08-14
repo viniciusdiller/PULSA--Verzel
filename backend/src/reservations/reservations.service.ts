@@ -257,6 +257,52 @@ export class ReservationsService {
     });
   }
 
+  // Desistência explícita do cliente antes de pagar — sem isso, o único
+  // jeito de "devolver" o assento era esperar o TTL inteiro (até 7min)
+  // mesmo se a pessoa decidisse na hora que não quer mais aquele lugar.
+  // Um app de ingresso real sempre tem essa saída.
+  async cancel(
+    customerId: string,
+    reservationId: string,
+  ): Promise<Reservation> {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva não encontrada.');
+    }
+    if (reservation.customerId !== customerId) {
+      throw new ForbiddenException('Esta reserva não pertence a você.');
+    }
+    if (reservation.status !== ReservationStatus.HOLDING) {
+      throw new BadRequestException(
+        `Não é possível cancelar uma reserva com status ${reservation.status}.`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Update condicional atômico: só cancela se ainda estiver HOLDING —
+      // mesma estratégia de "atualização condicional + checar linhas
+      // afetadas" usada no gate e no sweeper, pra não pisar num pagamento
+      // que aprovou entre a leitura acima e este update.
+      const updateResult = await tx.reservation.updateMany({
+        where: { id: reservationId, status: ReservationStatus.HOLDING },
+        data: { status: ReservationStatus.CANCELED },
+      });
+      if (updateResult.count === 0) {
+        throw new BadRequestException('Esta reserva não está mais em espera.');
+      }
+
+      await tx.seat.updateMany({
+        where: { id: reservation.seatId, status: SeatStatus.HELD },
+        data: { status: SeatStatus.AVAILABLE },
+      });
+
+      return tx.reservation.findUniqueOrThrow({ where: { id: reservationId } });
+    });
+  }
+
   private async expireHold(
     reservationId: string,
     seatId: string,
