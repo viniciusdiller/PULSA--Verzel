@@ -16,9 +16,9 @@ const STATUS_LABEL: Record<EventStatus, string> = {
   CANCELED: "Cancelado",
 };
 
-const STATUS_VARIANT: Record<EventStatus, "secondary" | "default" | "destructive"> = {
+const STATUS_VARIANT: Record<EventStatus, "secondary" | "success" | "destructive"> = {
   DRAFT: "secondary",
-  PUBLISHED: "default",
+  PUBLISHED: "success",
   CANCELED: "destructive",
 };
 
