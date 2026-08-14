@@ -16,25 +16,38 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <Link href="/" className="font-heading text-lg tracking-tight">
-          Elite Dev <span className="text-muted-foreground">Ingressos</span>
+        {/* Wordmark: linha perfurada em coral sob "PULSA" — referência
+            direta ao "canhoto de ingresso" do guia de marca (Conceito 2),
+            não um clipart genérico de logo. */}
+        <Link href="/" className="flex flex-col leading-none">
+          <span className="font-heading text-xl font-bold tracking-tight text-foreground">
+            PULSA
+          </span>
+          <span
+            aria-hidden
+            className="mt-1 h-px w-full"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(90deg, var(--color-primary) 0 6px, transparent 6px 12px)",
+            }}
+          />
         </Link>
 
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-2">
           {isLoading ? null : user ? (
             <>
               <Link
                 href={roleHomePath(user.role)}
                 className={cn(
-                  "text-sm font-medium transition-colors hover:text-foreground",
+                  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground",
                   pathname === roleHomePath(user.role)
-                    ? "text-foreground"
+                    ? "bg-muted text-foreground"
                     : "text-muted-foreground",
                 )}
               >
                 {roleNavLabel(user.role)}
               </Link>
-              <div className="flex items-center gap-2">
+              <div className="mx-1 flex items-center gap-2">
                 <span className="text-sm text-foreground">{user.name}</span>
                 <Badge variant="outline">{roleLabel(user.role)}</Badge>
               </div>
