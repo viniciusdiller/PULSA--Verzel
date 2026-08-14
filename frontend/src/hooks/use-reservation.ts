@@ -1,0 +1,45 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import type { PayResult, Reservation } from "@/types/reservation";
+
+export function useHoldSeatMutation(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (seatId: string) => {
+      const { data } = await apiClient.post<Reservation>(
+        `/events/${eventId}/seats/${seatId}/hold`,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["events", eventId, "seatmap"] });
+    },
+  });
+}
+
+export function useReservationQuery(reservationId: string | null) {
+  return useQuery({
+    queryKey: ["reservations", reservationId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Reservation>(`/reservations/${reservationId}`);
+      return data;
+    },
+    enabled: !!reservationId,
+    refetchInterval: 5000,
+  });
+}
+
+export function usePayReservationMutation(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ reservationId, cardNumber }: { reservationId: string; cardNumber: string }) => {
+      const { data } = await apiClient.post<PayResult>(`/reservations/${reservationId}/pay`, {
+        cardNumber,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["events", eventId, "seatmap"] });
+    },
+  });
+}
