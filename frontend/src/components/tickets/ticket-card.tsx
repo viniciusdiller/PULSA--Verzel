@@ -14,8 +14,8 @@ const STATUS_LABEL: Record<TicketWithDetails["status"], string> = {
   VOID: "Inválido",
 };
 
-const STATUS_VARIANT: Record<TicketWithDetails["status"], "default" | "secondary" | "destructive"> = {
-  VALID: "default",
+const STATUS_VARIANT: Record<TicketWithDetails["status"], "success" | "secondary" | "destructive"> = {
+  VALID: "success",
   USED: "secondary",
   VOID: "destructive",
 };
@@ -66,7 +66,7 @@ export function TicketCard({
               Código do ingresso
             </p>
             <div className="flex items-center gap-2">
-              <code className="rounded bg-muted px-2 py-1 text-base font-semibold tracking-[0.15em]">
+              <code className="rounded-md bg-muted px-2.5 py-1.5 font-mono text-base font-semibold tracking-[0.15em]">
                 {ticket.shortCode.slice(0, 3)} {ticket.shortCode.slice(3)}
               </code>
               <Button variant="outline" size="sm" onClick={copyCode}>

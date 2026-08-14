@@ -66,15 +66,15 @@ export function SeatMap({
                             disabled={!isAvailable || disabled || isPending}
                             onClick={() => onSelectSeat(seat)}
                             className={cn(
-                              "flex h-7 w-7 items-center justify-center rounded-sm text-[10px] transition-colors",
+                              "flex h-7 w-7 items-center justify-center rounded-md text-[10px] transition-all active:scale-90",
                               isAvailable &&
                                 !disabled &&
-                                "border border-amber-500/50 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400",
+                                "border-2 border-violet/50 text-violet hover:border-violet hover:bg-violet/10",
                               seat.status === "HELD" &&
                                 "cursor-not-allowed bg-muted text-muted-foreground/50",
                               seat.status === "SOLD" &&
                                 "cursor-not-allowed bg-muted/50 text-muted-foreground/30",
-                              isPending && "bg-amber-500 text-black",
+                              isPending && "border-2 border-primary bg-primary text-primary-foreground",
                             )}
                           >
                             {seat.number}
@@ -90,9 +90,12 @@ export function SeatMap({
         })}
       </div>
 
-      <div className="mt-8 flex items-center gap-6 text-xs text-muted-foreground">
+      <div className="mt-8 flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm border border-amber-500/50" /> Disponível
+          <span className="h-3 w-3 rounded-sm border-2 border-violet/50" /> Disponível
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm border-2 border-primary bg-primary" /> Selecionado
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-sm bg-muted" /> Reservado

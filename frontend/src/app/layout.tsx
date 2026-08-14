@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 
-// Serifada de exibição, usada só em títulos de evento (ver decisão de
-// direção visual no plano: nunca em botão/label/chrome de UI).
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+// Display/heading — "cartaz de show": condensada o suficiente pra nomes
+// longos de line-up sem perder impacto (ver identidade PULSA no plano).
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
-  axes: ["opsz", "SOFT", "WONK"],
+  weight: ["500", "700"],
 });
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
@@ -23,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Plataforma de Eventos e Ingressos",
+  title: "PULSA — Ingressos para festivais, festas e grandes jogos",
   description: "Publique eventos, reserve seu lugar, receba seu ingresso.",
 };
 
@@ -31,12 +32,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`dark ${fraunces.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${spaceGrotesk.variable} ${manrope.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>
           <SiteHeader />
           {children}
+          <SiteFooter />
         </Providers>
       </body>
     </html>

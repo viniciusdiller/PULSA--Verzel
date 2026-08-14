@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-manrope);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-fraunces);
+  --font-heading: var(--font-space-grotesk);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -35,10 +35,26 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Tokens da identidade PULSA que não existem no set padrão do shadcn.
+     Registrados aqui para gerar as classes utilitárias de cor (bg, text,
+     border) correspondentes automaticamente. */
+  --color-violet: var(--violet);
+  --color-violet-foreground: var(--violet-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-category-party: var(--category-party);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -46,75 +62,126 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-card: 0 8px 24px rgb(20 18 28 / 0.1);
+  --shadow-card-hover: 0 14px 36px rgb(20 18 28 / 0.16);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #faf9fc;
+  --foreground: #14121c;
+  --card: #ffffff;
+  --card-foreground: #14121c;
+  --popover: #ffffff;
+  --popover-foreground: #14121c;
+
+  /* Coral energético — CTA primário em todo o app. Só usado em botão
+     sólido com texto branco: sobre fundo claro fica em ~3.4:1, abaixo do
+     AA pra texto corrido (nota do próprio guia de marca). */
+  --primary: #ff3b5c;
+  --primary-foreground: #ffffff;
+  --primary-hover: #e62a4b;
+  --primary-active: #b21f3c;
+
+  --secondary: #efedf3;
+  --secondary-foreground: #14121c;
+  --muted: #efedf3;
+  --muted-foreground: #6b6980;
+  --accent: #f1eafb;
+  --accent-foreground: #14121c;
+
+  /* Vermelho de erro deliberadamente distinto do coral — coral já é o CTA
+     em toda a interface, reaproveitá-lo também como "erro" criaria
+     ambiguidade visual entre "aja aqui" e "algo deu errado". */
+  --destructive: #e5484d;
+
+  --border: #e4e2ea;
+  --input: #e4e2ea;
+  --ring: #6c2bd9;
+
+  --chart-1: #ff3b5c;
+  --chart-2: #6c2bd9;
+  --chart-3: #2d6cff;
+  --chart-4: #e8c468;
+  --chart-5: #c6ff3d;
+
+  --radius: 1rem;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14121c;
+  --sidebar-primary: #ff3b5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1eafb;
+  --sidebar-accent-foreground: #14121c;
+  --sidebar-border: #e4e2ea;
+  --sidebar-ring: #6c2bd9;
+
+  /* Tokens de marca PULSA — mesmo valor em claro/escuro (acentos
+     saturados o suficiente pra funcionar nos dois fundos), exceto onde
+     comentado. */
+  --violet: #6c2bd9;
+  --violet-foreground: #ffffff;
+  --success: #c6ff3d;
+  --success-foreground: #14121c;
+  --warning: #e8c468;
+  --warning-foreground: #14121c;
+  --info: #2d6cff;
+  --info-foreground: #ffffff;
+  /* Categoria "Festas" do guia — token reservado, ainda sem uso: o
+     produto não tem campo de categoria de evento hoje (ver plano). */
+  --category-party: #ff2fb0;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0c0b14;
+  --foreground: #f5f3fa;
+  --card: #16141f;
+  --card-foreground: #f5f3fa;
+  --popover: #16141f;
+  --popover-foreground: #f5f3fa;
+
+  --primary: #ff3b5c;
+  --primary-foreground: #ffffff;
+  --primary-hover: #ff5470;
+  --primary-active: #e62a4b;
+
+  --secondary: #201d2b;
+  --secondary-foreground: #f5f3fa;
+  --muted: #201d2b;
+  --muted-foreground: #a9a6bd;
+  --accent: #241c36;
+  --accent-foreground: #f5f3fa;
+
+  --destructive: #ff6369;
+
+  --border: #2a2836;
+  --input: #2a2836;
+  --ring: #8b5cf6;
+
+  --chart-1: #ff3b5c;
+  --chart-2: #8b5cf6;
+  --chart-3: #5b8dff;
+  --chart-4: #e8c468;
+  --chart-5: #c6ff3d;
+
+  --sidebar: #16141f;
+  --sidebar-foreground: #f5f3fa;
+  --sidebar-primary: #ff3b5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #241c36;
+  --sidebar-accent-foreground: #f5f3fa;
+  --sidebar-border: #2a2836;
+  --sidebar-ring: #8b5cf6;
+
+  --violet: #8b5cf6;
+  --violet-foreground: #ffffff;
+  --success: #c6ff3d;
+  --success-foreground: #14121c;
+  --warning: #e8c468;
+  --warning-foreground: #14121c;
+  --info: #5b8dff;
+  --info-foreground: #0c0b14;
+  --category-party: #ff2fb0;
 }
 
 @layer base {
