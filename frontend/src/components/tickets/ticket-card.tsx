@@ -34,7 +34,7 @@ export function TicketCard({
   }
 
   async function copyCode() {
-    await navigator.clipboard.writeText(ticket.qrToken);
+    await navigator.clipboard.writeText(ticket.shortCode);
     toast.success("Código copiado.");
   }
 
@@ -66,8 +66,8 @@ export function TicketCard({
               Código do ingresso
             </p>
             <div className="flex items-center gap-2">
-              <code className="max-w-[220px] truncate rounded bg-muted px-2 py-1 text-xs sm:max-w-[280px]">
-                {ticket.qrToken}
+              <code className="rounded bg-muted px-2 py-1 text-base font-semibold tracking-[0.15em]">
+                {ticket.shortCode.slice(0, 3)} {ticket.shortCode.slice(3)}
               </code>
               <Button variant="outline" size="sm" onClick={copyCode}>
                 Copiar código
