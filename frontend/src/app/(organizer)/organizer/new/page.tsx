@@ -73,6 +73,11 @@ export default function NewEventPage() {
         title: selected.title,
         description: values.description,
         imageUrl: selected.imageUrl ?? undefined,
+        // Date.now() aqui só roda dentro de onSubmit (disparado por
+        // handleSubmit no clique), nunca durante o render — falso positivo
+        // da checagem estática do plugin, que não distingue "código no
+        // escopo do componente" de "só alcançável a partir de um handler".
+        // eslint-disable-next-line react-hooks/purity
         startsAt: selected.startsAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         venueName: selected.venueName || "A definir",
         venueCity: selected.venueCity || "A definir",

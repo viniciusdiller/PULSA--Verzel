@@ -15,7 +15,14 @@ export function QrScanner({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const onDecodeRef = useRef(onDecode);
-  onDecodeRef.current = onDecode;
+
+  // Mantém a ref sincronizada num efeito em vez de durante o render —
+  // mutar uma ref no corpo do componente é o padrão "latest ref" pra
+  // evitar closure velha no scanner (que só chama isso muito depois, de
+  // forma assíncrona), mas a call em si precisa ficar fora do render.
+  useEffect(() => {
+    onDecodeRef.current = onDecode;
+  }, [onDecode]);
 
   useEffect(() => {
     const scanner = new Html5Qrcode(REGION_ID);
