@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/use-auth";
 import { apiClient } from "@/lib/api-client";
-import { saveSession, roleHomePath, type AuthUser } from "@/lib/auth";
+import { roleHomePath, type AuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ interface LoginResponse {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const { data } = await apiClient.post<LoginResponse>("/auth/login", values);
-      saveSession(data.accessToken, data.user);
+      login(data.accessToken, data.user);
       toast.success(`Bem-vindo, ${data.user.name}`);
       router.push(roleHomePath(data.user.role));
     } catch (error) {

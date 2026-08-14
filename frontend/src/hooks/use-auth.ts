@@ -1,24 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { clearSession, getStoredUser, type AuthUser } from "@/lib/auth";
+import { useAuthStore } from "@/store/auth-store";
+import type { AuthUser } from "@/lib/auth";
 
 export function useAuth() {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const user = useAuthStore((state) => state.user);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const hydrate = useAuthStore((state) => state.hydrate);
+  const storeLogin = useAuthStore((state) => state.login);
+  const storeLogout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
-    setUser(getStoredUser());
-    setIsLoading(false);
-  }, []);
+    hydrate();
+  }, [hydrate]);
 
-  const logout = useCallback(() => {
-    clearSession();
-    setUser(null);
+  function login(accessToken: string, authUser: AuthUser) {
+    storeLogin(accessToken, authUser);
+  }
+
+  function logout() {
+    storeLogout();
     router.push("/login");
-  }, [router]);
+  }
 
-  return { user, isLoading, logout };
+  return { user, isLoading, login, logout };
 }
