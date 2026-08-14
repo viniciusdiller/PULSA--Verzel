@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { EventsModule } from './events/events.module';
+import { GateModule } from './gate/gate.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { HealthController } from './health/health.controller';
@@ -26,6 +27,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
     CatalogModule,
     ReservationsModule,
     TicketsModule,
+    GateModule,
   ],
   controllers: [HealthController],
   providers: [
