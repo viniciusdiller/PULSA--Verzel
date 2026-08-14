@@ -30,8 +30,14 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       case 'P2025':
         return new NotFoundException('Registro não encontrado.');
       default:
+        // Passar um objeto (não uma string crua) garante um corpo de
+        // resposta consistente com ConflictException/NotFoundException,
+        // que sempre respondem `{ statusCode, message, error }`.
         return new HttpException(
-          'Erro inesperado ao acessar o banco de dados.',
+          {
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: 'Erro inesperado ao acessar o banco de dados.',
+          },
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
     }

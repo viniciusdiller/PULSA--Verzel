@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SiteHeader } from "@/components/site-header";
 
 // Serifada de exibição, usada só em títulos de evento (ver decisão de
 // direção visual no plano: nunca em botão/label/chrome de UI).
@@ -33,7 +34,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`dark ${fraunces.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <Providers>
+          <SiteHeader />
+          {children}
+        </Providers>
       </body>
     </html>
   );
