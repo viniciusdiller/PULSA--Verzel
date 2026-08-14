@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { roleHomePath, roleLabel, roleNavLabel } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
@@ -40,11 +41,15 @@ export function SiteHeader() {
               <Button variant="ghost" size="sm" onClick={logout}>
                 Sair
               </Button>
+              <ThemeToggle />
             </>
           ) : (
-            <Button asChild size="sm">
-              <Link href="/login">Entrar</Link>
-            </Button>
+            <>
+              <Button asChild size="sm">
+                <Link href="/login">Entrar</Link>
+              </Button>
+              <ThemeToggle />
+            </>
           )}
         </nav>
       </div>
