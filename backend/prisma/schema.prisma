@@ -171,9 +171,12 @@ model Ticket {
   ownerId String
   owner   User   @relation("TicketOwner", fields: [ownerId], references: [id])
 
-  serial  String       @unique
-  qrToken String       @unique @db.Text
-  status  TicketStatus @default(VALID)
+  serial    String       @unique
+  qrToken   String       @unique @db.Text
+  // Alternativa curta ao JWT do qrToken, só para digitação manual na
+  // portaria (o QR real continua sendo o qrToken). 6 dígitos, único.
+  shortCode String       @unique @db.VarChar(6)
+  status    TicketStatus @default(VALID)
 
   usedAt           DateTime? @db.Timestamptz(6)
   usedByGateUserId String?
