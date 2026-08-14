@@ -2,12 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type { EventListResponse, EventSummary, SeatMapResponse } from "@/types/event";
 
-export function useEventsQuery(search: string) {
+export function useEventsQuery(search: string, city?: string) {
   return useQuery({
-    queryKey: ["events", search],
+    queryKey: ["events", search, city ?? null],
     queryFn: async () => {
       const { data } = await apiClient.get<EventListResponse>("/events", {
-        params: search ? { search } : undefined,
+        params: {
+          ...(search ? { search } : {}),
+          ...(city ? { city } : {}),
+        },
       });
       return data;
     },

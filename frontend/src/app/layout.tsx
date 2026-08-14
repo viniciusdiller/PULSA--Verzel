@@ -3,6 +3,7 @@ import { Space_Grotesk, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 
 // Display/heading — "cartaz de show": condensada o suficiente pra nomes
 // longos de line-up sem perder impacto (ver identidade PULSA no plano).
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Providers>
           <SiteHeader />
           {children}
+          <SiteFooter />
         </Providers>
       </body>
     </html>
