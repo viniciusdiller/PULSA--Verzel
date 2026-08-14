@@ -1,18 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 
+const noopSubscribe = () => () => {};
+
+// O tema real só é conhecido depois do mount (next-themes lê o
+// localStorage no cliente) — renderizar o ícone antes disso causaria
+// hydration mismatch entre servidor e cliente. useSyncExternalStore com
+// snapshots diferentes de servidor/cliente é o jeito idiomático de adiar
+// isso sem precisar de setState dentro de um efeito.
+function useIsClient() {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}
+
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  // O tema real só é conhecido depois do mount (next-themes lê o
-  // localStorage no cliente) — renderizar o ícone antes disso causaria
-  // hydration mismatch entre servidor e cliente.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsClient();
 
   if (!mounted) {
     return <div className="size-8" aria-hidden />;
