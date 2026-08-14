@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { roleHomePath, roleLabel } from "@/lib/auth";
+import { roleHomePath, roleLabel, roleNavLabel } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
   const { user, isLoading, logout } = useAuth();
+  const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -16,16 +19,24 @@ export function SiteHeader() {
           Elite Dev <span className="text-muted-foreground">Ingressos</span>
         </Link>
 
-        <nav className="flex items-center gap-3">
+        <nav className="flex items-center gap-4">
           {isLoading ? null : user ? (
             <>
               <Link
                 href={roleHomePath(user.role)}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-foreground",
+                  pathname === roleHomePath(user.role)
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
               >
-                {user.name}
+                {roleNavLabel(user.role)}
               </Link>
-              <Badge variant="outline">{roleLabel(user.role)}</Badge>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-foreground">{user.name}</span>
+                <Badge variant="outline">{roleLabel(user.role)}</Badge>
+              </div>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Sair
               </Button>

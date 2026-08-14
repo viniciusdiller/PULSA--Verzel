@@ -38,6 +38,18 @@ export function roleHomePath(role: Role): string {
   }
 }
 
+export function roleNavLabel(role: Role): string {
+  switch (role) {
+    case "ORGANIZER":
+      return "Meus eventos";
+    case "GATE_STAFF":
+      return "Portaria";
+    case "CUSTOMER":
+    default:
+      return "Meus ingressos";
+  }
+}
+
 export function roleLabel(role: Role): string {
   switch (role) {
     case "ORGANIZER":
