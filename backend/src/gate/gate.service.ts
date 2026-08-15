@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Ticket, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GateHistoryTicketsQueryDto } from './dto/gate-history-tickets-query.dto';
+import { GateHistoryEventsQueryDto } from './dto/gate-history-events-query.dto';
 import {
   SHORT_CODE_PATTERN,
   TicketQrPayload,
@@ -45,6 +46,13 @@ export interface GateHistoryTicketItem {
 
 export interface GateHistoryTicketsPage {
   items: GateHistoryTicketItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface GateHistoryEventsPage {
+  items: GateHistoryEventSummary[];
   total: number;
   page: number;
   pageSize: number;
@@ -155,13 +163,22 @@ export class GateService {
 
   // Um evento por linha, com quantos ingressos este atendente já validou
   // ali — só ingressos USED (tentativas recusadas nunca viram linha no
-  // banco, então o filtro por status já é o filtro certo). Duas consultas
-  // em vez de um único join porque o groupBy precisa vir primeiro pra
-  // definir a ordem (mais recente validado primeiro); o findMany com "in"
-  // não preserva a ordem dos ids, por isso remontamos na ordem do groupBy.
+  // banco, então o filtro por status já é o filtro certo). O groupBy
+  // busca TODOS os eventos distintos de uma vez (já ordenados, mais
+  // recente validado primeiro) e a paginação é aplicada em memória sobre
+  // esse array — não dá pra pedir uma "página" direto pro groupBy porque
+  // ele não tem skip/take, e o array de eventos distintos de um atendente
+  // é pequeno o suficiente (dezenas, não milhares) pra isso ser barato.
+  // Só depois disso buscamos os detalhes (Event) dos ids da página atual,
+  // não de todos — o findMany com "in" não preserva ordem, por isso
+  // remontamos na ordem do groupBy já fatiado.
   async listValidatedEvents(
     gateUserId: string,
-  ): Promise<GateHistoryEventSummary[]> {
+    query: GateHistoryEventsQueryDto,
+  ): Promise<GateHistoryEventsPage> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 8;
+
     const grouped = await this.prisma.ticket.groupBy({
       by: ['eventId'],
       where: { usedByGateUserId: gateUserId, status: TicketStatus.USED },
@@ -170,12 +187,15 @@ export class GateService {
       orderBy: { _max: { usedAt: 'desc' } },
     });
 
-    if (grouped.length === 0) {
-      return [];
+    const total = grouped.length;
+    const pageGroups = grouped.slice((page - 1) * pageSize, page * pageSize);
+
+    if (pageGroups.length === 0) {
+      return { items: [], total, page, pageSize };
     }
 
     const events = await this.prisma.event.findMany({
-      where: { id: { in: grouped.map((g) => g.eventId) } },
+      where: { id: { in: pageGroups.map((g) => g.eventId) } },
       select: {
         id: true,
         title: true,
@@ -186,7 +206,7 @@ export class GateService {
     });
     const eventById = new Map(events.map((e) => [e.id, e]));
 
-    return grouped
+    const items = pageGroups
       .map((g) => {
         const event = eventById.get(g.eventId);
         if (!event) return null;
@@ -203,6 +223,8 @@ export class GateService {
       .filter(
         (summary): summary is GateHistoryEventSummary => summary !== null,
       );
+
+    return { items, total, page, pageSize };
   }
 
   // Sem $transaction de propósito: diferente da listagem pública/do

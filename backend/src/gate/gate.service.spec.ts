@@ -271,12 +271,12 @@ describe('GateService', () => {
   });
 
   describe('listValidatedEvents', () => {
-    it('retorna [] sem consultar eventos quando o atendente nunca validou nada', async () => {
+    it('retorna items:[] sem consultar eventos quando o atendente nunca validou nada', async () => {
       prisma.ticket.groupBy.mockResolvedValue([]);
 
-      const result = await service.listValidatedEvents('gate-1');
+      const result = await service.listValidatedEvents('gate-1', {});
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 8 });
       expect(prisma.event.findMany).not.toHaveBeenCalled();
     });
 
@@ -310,13 +310,17 @@ describe('GateService', () => {
         },
       ]);
 
-      const result = await service.listValidatedEvents('gate-1');
+      const result = await service.listValidatedEvents('gate-1', {});
 
-      expect(result.map((r) => r.eventId)).toEqual([EVENT_ID, OTHER_EVENT_ID]);
-      expect(result[0]).toMatchObject({
+      expect(result.items.map((r) => r.eventId)).toEqual([
+        EVENT_ID,
+        OTHER_EVENT_ID,
+      ]);
+      expect(result.items[0]).toMatchObject({
         eventTitle: 'Evento A',
         validatedCount: 3,
       });
+      expect(result.total).toBe(2);
       expect(prisma.event.findMany).toHaveBeenCalledWith({
         where: { id: { in: [EVENT_ID, OTHER_EVENT_ID] } },
         select: {
@@ -339,9 +343,40 @@ describe('GateService', () => {
       ]);
       prisma.event.findMany.mockResolvedValue([]);
 
-      const result = await service.listValidatedEvents('gate-1');
+      const result = await service.listValidatedEvents('gate-1', {});
 
-      expect(result).toEqual([]);
+      expect(result.items).toEqual([]);
+    });
+
+    it('pagina em memória sobre o array já ordenado do groupBy — só busca Event dos ids da página atual', async () => {
+      const groups = [EVENT_ID, OTHER_EVENT_ID, 'event-3'].map((id) => ({
+        eventId: id,
+        _count: { _all: 1 },
+        _max: { usedAt: new Date() },
+      }));
+      prisma.ticket.groupBy.mockResolvedValue(groups);
+      prisma.event.findMany.mockResolvedValue([
+        {
+          id: OTHER_EVENT_ID,
+          title: 'Evento B',
+          venueCity: 'Rio',
+          startsAt: new Date(),
+        },
+      ]);
+
+      const result = await service.listValidatedEvents('gate-1', {
+        page: 2,
+        pageSize: 1,
+      });
+
+      expect(prisma.event.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: [OTHER_EVENT_ID] } },
+        }),
+      );
+      expect(result).toMatchObject({ total: 3, page: 2, pageSize: 1 });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].eventId).toBe(OTHER_EVENT_ID);
     });
   });
 

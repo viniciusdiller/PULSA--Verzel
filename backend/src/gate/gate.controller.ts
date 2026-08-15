@@ -13,6 +13,7 @@ import { Role } from '@prisma/client';
 import { GateService } from './gate.service';
 import { ValidateTicketDto } from './dto/validate-ticket.dto';
 import { GateHistoryTicketsQueryDto } from './dto/gate-history-tickets-query.dto';
+import { GateHistoryEventsQueryDto } from './dto/gate-history-events-query.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -44,10 +45,13 @@ export class GateController {
   @Get('history/events')
   @ApiOperation({
     summary:
-      'Lista os eventos em que este atendente já validou algum ingresso, com a contagem por evento',
+      'Lista paginada dos eventos em que este atendente já validou algum ingresso, com a contagem por evento',
   })
-  listValidatedEvents(@CurrentUser() user: AuthenticatedUser) {
-    return this.gateService.listValidatedEvents(user.id);
+  listValidatedEvents(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GateHistoryEventsQueryDto,
+  ) {
+    return this.gateService.listValidatedEvents(user.id, query);
   }
 
   @Get('history/events/:eventId/tickets')
