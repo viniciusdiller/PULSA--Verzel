@@ -65,7 +65,12 @@ describe('EventsService', () => {
       update: jest.Mock;
       delete: jest.Mock;
     };
-    reservation: { count: jest.Mock; findMany: jest.Mock };
+    reservation: {
+      count: jest.Mock;
+      findMany: jest.Mock;
+      deleteMany: jest.Mock;
+    };
+    ticket: { deleteMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let tx: {
@@ -108,7 +113,12 @@ describe('EventsService', () => {
         update: jest.fn(),
         delete: jest.fn(),
       },
-      reservation: { count: jest.fn(), findMany: jest.fn() },
+      reservation: {
+        count: jest.fn(),
+        findMany: jest.fn(),
+        deleteMany: jest.fn(),
+      },
+      ticket: { deleteMany: jest.fn() },
       $transaction: jest.fn(async (arg: unknown) => {
         if (typeof arg === 'function') {
           return (arg as (tx: unknown) => unknown)(tx);
@@ -780,6 +790,65 @@ describe('EventsService', () => {
         ForbiddenException,
       );
       expect(prisma.reservation.count).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('purge', () => {
+    it('exclui definitivamente um evento cancelado (tickets, reservas e o próprio evento)', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.CANCELED,
+      });
+      prisma.ticket.deleteMany.mockResolvedValue({ count: 2 });
+      prisma.reservation.deleteMany.mockResolvedValue({ count: 3 });
+      prisma.event.delete.mockResolvedValue({ id: 'event-1' });
+
+      await service.purge('organizer-1', 'event-1');
+
+      expect(prisma.ticket.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'event-1' },
+      });
+      expect(prisma.reservation.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'event-1' },
+      });
+      expect(prisma.event.delete).toHaveBeenCalledWith({
+        where: { id: 'event-1' },
+      });
+    });
+
+    it('rejeita quando o evento ainda não está cancelado', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.PUBLISHED,
+      });
+
+      await expect(service.purge('organizer-1', 'event-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.event.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejeita com NotFound quando o evento não existe', async () => {
+      prisma.event.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.purge('organizer-1', 'evento-inexistente'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejeita com Forbidden quando quem exclui não é o organizador dono', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'outro-organizador',
+        status: EventStatus.CANCELED,
+      });
+
+      await expect(service.purge('organizer-1', 'event-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.event.delete).not.toHaveBeenCalled();
     });
   });
 });

@@ -321,6 +321,30 @@ export class EventsService {
     return paidReservations.length;
   }
 
+  // Diferente de remove(): aqui o organizador já passou pelo cancelamento
+  // com estorno (event.status === CANCELED) e agora quer o registro fora
+  // da plataforma de vez — inclusive do próprio filtro "Cancelado". Reserva
+  // e Ticket não têm onDelete: Cascade a partir de Event (FK RESTRICT é
+  // proposital, ver schema.prisma), então precisam ser apagados manualmente
+  // antes do Event. EventCancellationNotice é um snapshot sem FK pro Event
+  // (eventId é só uma string ali) — sobrevive de propósito, é o que mantém
+  // a tela de desculpas do cliente funcionando mesmo depois da purga.
+  async purge(organizerId: string, eventId: string): Promise<void> {
+    const event = await this.findOwnedEventOrThrow(organizerId, eventId);
+
+    if (event.status !== EventStatus.CANCELED) {
+      throw new BadRequestException(
+        'Só é possível excluir definitivamente eventos já cancelados.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.ticket.deleteMany({ where: { eventId } }),
+      this.prisma.reservation.deleteMany({ where: { eventId } }),
+      this.prisma.event.delete({ where: { id: eventId } }),
+    ]);
+  }
+
   private async findOwnedEventOrThrow(
     organizerId: string,
     eventId: string,

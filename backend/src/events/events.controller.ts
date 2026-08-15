@@ -95,6 +95,21 @@ export class EventsController {
     return this.eventsService.remove(user.id, id);
   }
 
+  @Delete(':id/purge')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      'Exclui definitivamente um evento já cancelado (some até do filtro "Cancelado") — só o organizador dono',
+  })
+  purge(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.purge(user.id, id);
+  }
+
   @Public()
   @Get()
   @ApiOperation({
