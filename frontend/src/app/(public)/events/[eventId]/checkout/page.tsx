@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 import {
   Form,
   FormControl,
@@ -124,7 +124,7 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
   if (authLoading || seatMapLoading) {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-        <Skeleton className="h-64 w-full" />
+        <PageLoader />
       </main>
     );
   }

@@ -3,7 +3,7 @@
 import { use } from "react";
 import { useTicketByShareSlugQuery } from "@/hooks/use-tickets";
 import { TicketCard } from "@/components/tickets/ticket-card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function SharedTicketPage(props: PageProps<"/t/[shareSlug]">) {
   const { shareSlug } = use(props.params);
@@ -12,7 +12,7 @@ export default function SharedTicketPage(props: PageProps<"/t/[shareSlug]">) {
   if (isLoading) {
     return (
       <main className="mx-auto w-full max-w-lg flex-1 px-6 py-16">
-        <Skeleton className="h-48 w-full" />
+        <PageLoader label="Carregando ingresso..." />
       </main>
     );
   }

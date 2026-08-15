@@ -5,7 +5,7 @@ import Link from "next/link";
 import { use } from "react";
 import { useEventQuery } from "@/hooks/use-events";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
 
 export default function EventDetailPage(props: PageProps<"/events/[eventId]">) {
@@ -15,9 +15,7 @@ export default function EventDetailPage(props: PageProps<"/events/[eventId]">) {
   if (isLoading) {
     return (
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
-        <Skeleton className="mb-6 aspect-video w-full" />
-        <Skeleton className="mb-2 h-8 w-2/3" />
-        <Skeleton className="h-4 w-1/3" />
+        <PageLoader label="Carregando evento..." />
       </main>
     );
   }

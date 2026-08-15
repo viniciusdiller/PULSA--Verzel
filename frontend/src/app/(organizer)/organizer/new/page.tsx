@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 import {
   Form,
   FormControl,
@@ -110,13 +110,7 @@ export default function NewEventPage() {
           className="mb-6"
         />
 
-        {isLoading && (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))}
-          </div>
-        )}
+        {isLoading && <PageLoader label="Buscando no catálogo..." />}
 
         {isError && (
           <p className="text-muted-foreground">
