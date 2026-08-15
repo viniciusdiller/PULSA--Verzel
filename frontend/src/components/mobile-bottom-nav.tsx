@@ -2,7 +2,16 @@
 
 import { useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { CalendarDays, Home, LogIn, PlusCircle, ScanLine, Ticket, User } from "lucide-react";
+import {
+  CalendarDays,
+  History,
+  Home,
+  LogIn,
+  PlusCircle,
+  ScanLine,
+  Ticket,
+  User,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { LimelightNav, type NavItem } from "@/components/ui/limelight-nav";
 
@@ -34,9 +43,13 @@ function getItemsForRole(role: string | undefined): BottomNavItem[] {
         { id: "profile", icon: <User />, label: "Perfil", href: "/profile" },
       ];
     case "GATE_STAFF":
+      // "/gate" já é a home de fato do papel (é pra onde o login manda,
+      // roleHomePath já aponta pra lá) — o ícone de casa não fazia mais
+      // sentido apontando pra "/", a home pública de eventos, que não
+      // serve pra nada pra quem está trabalhando na portaria.
       return [
-        { id: "home", icon: <Home />, label: "Início", href: "/" },
-        { id: "gate", icon: <ScanLine />, label: "Portaria", href: "/gate" },
+        { id: "home", icon: <ScanLine />, label: "Início", href: "/gate" },
+        { id: "history", icon: <History />, label: "Histórico", href: "/gate/history" },
         { id: "profile", icon: <User />, label: "Perfil", href: "/profile" },
       ];
     default:

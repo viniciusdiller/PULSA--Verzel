@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Ticket, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { GateHistoryTicketsQueryDto } from './dto/gate-history-tickets-query.dto';
+import { GateHistoryEventsQueryDto } from './dto/gate-history-events-query.dto';
 import {
   SHORT_CODE_PATTERN,
   TicketQrPayload,
@@ -22,6 +24,38 @@ export interface GateValidationResult {
   ticket?: GateTicketSummary;
   usedAt?: Date | null;
   usedByGateUserId?: string | null;
+}
+
+export interface GateHistoryEventSummary {
+  eventId: string;
+  eventTitle: string;
+  imageUrl: string | null;
+  venueCity: string;
+  startsAt: Date;
+  validatedCount: number;
+  lastValidatedAt: Date | null;
+}
+
+export interface GateHistoryTicketItem {
+  ticketId: string;
+  seatLabel: string;
+  ownerName: string;
+  usedAt: Date | null;
+  shortCode: string;
+}
+
+export interface GateHistoryTicketsPage {
+  items: GateHistoryTicketItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface GateHistoryEventsPage {
+  items: GateHistoryEventSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 type TicketWithRelations = Ticket & {
@@ -124,6 +158,119 @@ export class GateService {
       ticket: this.summarize(ticket),
       usedAt: now,
       usedByGateUserId: gateUserId,
+    };
+  }
+
+  // Um evento por linha, com quantos ingressos este atendente já validou
+  // ali — só ingressos USED (tentativas recusadas nunca viram linha no
+  // banco, então o filtro por status já é o filtro certo). O groupBy
+  // busca TODOS os eventos distintos de uma vez (já ordenados, mais
+  // recente validado primeiro) e a paginação é aplicada em memória sobre
+  // esse array — não dá pra pedir uma "página" direto pro groupBy porque
+  // ele não tem skip/take, e o array de eventos distintos de um atendente
+  // é pequeno o suficiente (dezenas, não milhares) pra isso ser barato.
+  // Só depois disso buscamos os detalhes (Event) dos ids da página atual,
+  // não de todos — o findMany com "in" não preserva ordem, por isso
+  // remontamos na ordem do groupBy já fatiado.
+  async listValidatedEvents(
+    gateUserId: string,
+    query: GateHistoryEventsQueryDto,
+  ): Promise<GateHistoryEventsPage> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 4;
+
+    const grouped = await this.prisma.ticket.groupBy({
+      by: ['eventId'],
+      where: { usedByGateUserId: gateUserId, status: TicketStatus.USED },
+      _count: { _all: true },
+      _max: { usedAt: true },
+      orderBy: { _max: { usedAt: 'desc' } },
+    });
+
+    const total = grouped.length;
+    const pageGroups = grouped.slice((page - 1) * pageSize, page * pageSize);
+
+    if (pageGroups.length === 0) {
+      return { items: [], total, page, pageSize };
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: { id: { in: pageGroups.map((g) => g.eventId) } },
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        venueCity: true,
+        startsAt: true,
+      },
+    });
+    const eventById = new Map(events.map((e) => [e.id, e]));
+
+    const items = pageGroups
+      .map((g) => {
+        const event = eventById.get(g.eventId);
+        if (!event) return null;
+        return {
+          eventId: g.eventId,
+          eventTitle: event.title,
+          imageUrl: event.imageUrl,
+          venueCity: event.venueCity,
+          startsAt: event.startsAt,
+          validatedCount: g._count._all,
+          lastValidatedAt: g._max.usedAt,
+        };
+      })
+      .filter(
+        (summary): summary is GateHistoryEventSummary => summary !== null,
+      );
+
+    return { items, total, page, pageSize };
+  }
+
+  // Sem $transaction de propósito: diferente da listagem pública/do
+  // organizador (sensíveis a estado mutável concorrente tipo publicar/
+  // despublicar no meio da leitura), aqui as linhas já são USED — do
+  // ponto de vista de quem está revendo o próprio histórico, é
+  // essencialmente append-only. Não vale segurar um slot de transação
+  // pra uma leitura de baixa prioridade.
+  async listValidatedTickets(
+    gateUserId: string,
+    eventId: string,
+    query: GateHistoryTicketsQueryDto,
+  ): Promise<GateHistoryTicketsPage> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
+    const where = {
+      eventId,
+      usedByGateUserId: gateUserId,
+      status: TicketStatus.USED,
+    };
+
+    const [tickets, total] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where,
+        include: {
+          seat: { select: { label: true } },
+          owner: { select: { name: true } },
+        },
+        orderBy: { usedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+
+    return {
+      items: tickets.map((ticket) => ({
+        ticketId: ticket.id,
+        seatLabel: ticket.seat.label,
+        ownerName: ticket.owner.name,
+        usedAt: ticket.usedAt,
+        shortCode: ticket.shortCode,
+      })),
+      total,
+      page,
+      pageSize,
     };
   }
 
