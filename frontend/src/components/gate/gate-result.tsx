@@ -8,9 +8,10 @@ import type { GateValidationResult } from "@/types/gate";
 
 // Reaproveita as cores da identidade PULSA em vez de inventar tons novos
 // (o guia de marca não define "sucesso"/"erro"/"aviso" — ver plano):
-// lime = sucesso/válido, champagne = aviso/já-utilizado, azul-esportes =
-// informação, e um vermelho distinto do coral (que é o CTA em todo o
-// resto do app) para inválido.
+// roxo = sucesso/válido (verde saiu da paleta por decisão de marca —
+// --success agora resolve pro mesmo roxo do resto do produto), champagne
+// = aviso/já-utilizado, azul-esportes = informação, e um vermelho
+// distinto do coral (que é o CTA em todo o resto do app) para inválido.
 const CONFIG = {
   VALID: {
     label: "Válido",

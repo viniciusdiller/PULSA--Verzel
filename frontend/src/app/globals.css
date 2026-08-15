@@ -121,8 +121,12 @@
      comentado. */
   --violet: #6c2bd9;
   --violet-foreground: #ffffff;
-  --success: #c6ff3d;
-  --success-foreground: #14121c;
+  /* Verde saiu da paleta por decisão de marca — "sucesso/válido" agora usa
+     o mesmo roxo do resto do produto em vez de lime, então o token
+     continua se chamando --success (o significado semântico não mudou,
+     só a cor) para não precisar caçar toda variant="success" no código. */
+  --success: #6c2bd9;
+  --success-foreground: #ffffff;
   --warning: #e8c468;
   --warning-foreground: #14121c;
   --info: #2d6cff;
@@ -175,8 +179,8 @@
 
   --violet: #8b5cf6;
   --violet-foreground: #ffffff;
-  --success: #c6ff3d;
-  --success-foreground: #14121c;
+  --success: #8b5cf6;
+  --success-foreground: #ffffff;
   --warning: #e8c468;
   --warning-foreground: #14121c;
   --info: #5b8dff;

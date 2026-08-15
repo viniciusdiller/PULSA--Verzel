@@ -21,8 +21,9 @@ const badgeVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         // Variantes semânticas da identidade PULSA — reaproveitam cores já
         // definidas na paleta em vez de inventar tons novos (ver plano):
-        // lime = sucesso/válido, champagne = aviso/já-utilizado,
-        // azul-esportes = informação.
+        // roxo = sucesso/válido (verde saiu da paleta por decisão de
+        // marca), champagne = aviso/já-utilizado, azul-esportes =
+        // informação.
         success: "bg-success text-success-foreground [a]:hover:bg-success/80",
         warning: "bg-warning text-warning-foreground [a]:hover:bg-warning/80",
         info: "bg-info text-info-foreground [a]:hover:bg-info/80",
