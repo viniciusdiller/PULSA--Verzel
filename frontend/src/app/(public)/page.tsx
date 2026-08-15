@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useEventsQuery, useFeaturedEventsQuery } from "@/hooks/use-events";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { EventCard } from "@/components/events/event-card";
+import { useAuth } from "@/hooks/use-auth";
+import { EventCarousel } from "@/components/events/event-carousel";
 import { HeroEvent } from "@/components/home/hero-event";
 import { FeaturedCarousel } from "@/components/home/featured-carousel";
 import { CategorySections } from "@/components/home/category-sections";
@@ -12,6 +13,7 @@ import { TrustSection } from "@/components/home/trust-section";
 import { CtaBand } from "@/components/home/cta-band";
 import { Input } from "@/components/ui/input";
 import { PageLoader } from "@/components/ui/page-loader";
+import { FilterChipsBreadcrumb } from "@/components/ui/filter-chips-breadcrumb";
 
 export default function EventsListPage() {
   const [search, setSearch] = useState("");
@@ -29,8 +31,24 @@ export default function EventsListPage() {
     selectedCity ?? undefined,
   );
   const { data: featuredEvents } = useFeaturedEventsQuery();
+  const { user } = useAuth();
 
   const isBrowsingUnfiltered = !debouncedSearch && !selectedCity;
+
+  const activeFilters = [
+    ...(search ? [{ id: "search", name: "Busca", value: search }] : []),
+    ...(selectedCity ? [{ id: "city", name: "Cidade", value: selectedCity }] : []),
+  ];
+
+  function handleRemoveFilter(id: string) {
+    if (id === "search") setSearch("");
+    if (id === "city") setSelectedCity(null);
+  }
+
+  function handleClearAllFilters() {
+    setSearch("");
+    setSelectedCity(null);
+  }
 
   const heroEvent = useMemo(() => {
     // A curadoria manual (featuredEvents) tem prioridade sobre a
@@ -57,6 +75,14 @@ export default function EventsListPage() {
           placeholder="Buscar por título do evento..."
           className="max-w-sm"
         />
+        {activeFilters.length > 0 && (
+          <FilterChipsBreadcrumb
+            filters={activeFilters}
+            onRemove={handleRemoveFilter}
+            onClearAll={handleClearAllFilters}
+            className="max-w-sm"
+          />
+        )}
       </div>
 
       {isBrowsingUnfiltered && featuredEvents && featuredEvents.length > 0 && (
@@ -82,11 +108,7 @@ export default function EventsListPage() {
             Não foi possível carregar os eventos agora. Tente novamente em instantes.
           </p>
         ) : filteredData && filteredData.items.length > 0 ? (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-            {filteredData.items.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+          <EventCarousel events={filteredData.items} />
         ) : (
           <p className="text-muted-foreground">
             {search || selectedCity
@@ -99,7 +121,7 @@ export default function EventsListPage() {
       {isBrowsingUnfiltered && allData && <CategorySections events={allData.items} />}
 
       <TrustSection />
-      <CtaBand />
+      {!user && <CtaBand />}
     </main>
   );
 }
