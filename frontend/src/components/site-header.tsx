@@ -87,7 +87,7 @@ export function SiteHeader() {
                 className="rounded-full transition-transform hover:cursor-pointer hover:scale-105"
                 aria-label="Saldo — ver perfil"
               >
-                <Badge variant="success">
+                <Badge variant="violet">
                   Saldo: {formatCentsToBRL(profile?.balanceCents ?? 0)}
                 </Badge>
               </Link>
