@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { CalendarDays, Home, LogIn, PlusCircle, ScanLine, Ticket } from "lucide-react";
+import { CalendarDays, Home, LogIn, PlusCircle, ScanLine, Ticket, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { LimelightNav, type NavItem } from "@/components/ui/limelight-nav";
 
@@ -24,17 +24,20 @@ function getItemsForRole(role: string | undefined): BottomNavItem[] {
       return [
         { id: "home", icon: <Home />, label: "Início", href: "/" },
         { id: "tickets", icon: <Ticket />, label: "Ingressos", href: "/my-tickets" },
+        { id: "profile", icon: <User />, label: "Perfil", href: "/profile" },
       ];
     case "ORGANIZER":
       return [
         { id: "home", icon: <Home />, label: "Início", href: "/" },
         { id: "events", icon: <CalendarDays />, label: "Eventos", href: "/organizer" },
         { id: "new", icon: <PlusCircle />, label: "Novo evento", href: "/organizer/new" },
+        { id: "profile", icon: <User />, label: "Perfil", href: "/profile" },
       ];
     case "GATE_STAFF":
       return [
         { id: "home", icon: <Home />, label: "Início", href: "/" },
         { id: "gate", icon: <ScanLine />, label: "Portaria", href: "/gate" },
+        { id: "profile", icon: <User />, label: "Perfil", href: "/profile" },
       ];
     default:
       return [
