@@ -6,6 +6,7 @@ import { isAxiosError } from "axios";
 import { useMyEventsQuery, usePublishEventMutation } from "@/hooks/use-organizer-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
 import type { EventStatus } from "@/types/event";
@@ -82,7 +83,14 @@ export default function OrganizerDashboardPage() {
                   disabled={publishMutation.isPending}
                   onClick={() => handlePublish(event.id)}
                 >
-                  Publicar
+                  {publishMutation.isPending ? (
+                    <>
+                      <LoaderSignalBars size="sm" className="mr-1.5" />
+                      Publicando...
+                    </>
+                  ) : (
+                    "Publicar"
+                  )}
                 </Button>
               )}
             </div>

@@ -14,6 +14,7 @@ import { roleHomePath, type AuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
 import {
   Form,
   FormControl,
@@ -108,7 +109,14 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" disabled={isSubmitting} className="mt-2">
-                {isSubmitting ? "Entrando..." : "Entrar"}
+                {isSubmitting ? (
+                  <>
+                    <LoaderSignalBars size="sm" className="mr-1.5" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
               </Button>
             </form>
           </Form>

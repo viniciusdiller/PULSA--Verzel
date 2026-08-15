@@ -17,6 +17,7 @@ import { SeatMap } from "@/components/seatmap/seat-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Form,
@@ -56,6 +57,9 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
 
   const remainingMs = useCountdown(reservation?.status === "HOLDING" ? reservation.holdExpiresAt : null);
   const expired = reservation?.status === "HOLDING" && remainingMs <= 0;
+  // Escalada visual nos últimos 60s — mesmo aviso de urgência que qualquer
+  // checkout real de ingresso dá antes do tempo acabar.
+  const lowTime = !expired && remainingMs > 0 && remainingMs <= 60_000;
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
@@ -172,7 +176,13 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
             <div className="flex items-center justify-between">
               <CardTitle className="font-heading text-xl">Pagamento</CardTitle>
               <span
-                className={`text-sm tabular-nums ${expired ? "text-destructive" : "text-muted-foreground"}`}
+                className={`text-sm font-medium tabular-nums ${
+                  expired
+                    ? "text-destructive"
+                    : lowTime
+                      ? "animate-pulse text-primary"
+                      : "text-muted-foreground"
+                }`}
               >
                 {expired ? "Expirado" : formatCountdown(remainingMs)}
               </span>
@@ -210,7 +220,14 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
                     Teste: 4242 4242 4242 4242 aprova sempre; 4000 0000 0000 0002 recusa sempre.
                   </p>
                   <Button type="submit" disabled={payMutation.isPending}>
-                    {payMutation.isPending ? "Processando..." : "Pagar"}
+                    {payMutation.isPending ? (
+                      <>
+                        <LoaderSignalBars size="sm" className="mr-1.5" />
+                        Processando...
+                      </>
+                    ) : (
+                      "Pagar"
+                    )}
                   </Button>
                   <Button type="button" variant="ghost" size="sm" onClick={resetToSeatSelection}>
                     Cancelar e escolher outro assento
