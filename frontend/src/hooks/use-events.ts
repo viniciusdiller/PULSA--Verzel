@@ -1,19 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type { EventListResponse, EventSummary, SeatMapResponse } from "@/types/event";
 
-export function useEventsQuery(search: string, city?: string) {
+// page/pageSize são opcionais e retrocompatíveis: quem já chamava sem
+// eles (home pública, que só usa a 1ª página) continua se comportando
+// exatamente igual — só quem passa explicitamente (ex. o seletor de
+// evento da portaria, paginado) manda esses parâmetros pro backend.
+export function useEventsQuery(search: string, city?: string, page?: number, pageSize?: number) {
   return useQuery({
-    queryKey: ["events", search, city ?? null],
+    queryKey: ["events", search, city ?? null, page ?? null, pageSize ?? null],
     queryFn: async () => {
       const { data } = await apiClient.get<EventListResponse>("/events", {
         params: {
           ...(search ? { search } : {}),
           ...(city ? { city } : {}),
+          ...(page ? { page } : {}),
+          ...(pageSize ? { pageSize } : {}),
         },
       });
       return data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 

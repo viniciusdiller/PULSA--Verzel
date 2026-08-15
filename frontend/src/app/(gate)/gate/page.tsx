@@ -21,14 +21,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatEventDateTime } from "@/lib/format";
 import type { GateValidationResult } from "@/types/gate";
 
+const PAGE_SIZE = 8;
+
 export default function GatePage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState("");
   const [result, setResult] = useState<GateValidationResult | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 450);
 
-  const { data: eventsData, isLoading: eventsLoading } = useEventsQuery(debouncedSearch);
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    // Volta pra página 1 sempre que a busca muda — senão dava pra ficar
+    // "preso" na página 3 de um filtro que só tem 1 resultado.
+    setPage(1);
+  }
+
+  const { data: eventsData, isLoading: eventsLoading, isPlaceholderData } = useEventsQuery(
+    debouncedSearch,
+    undefined,
+    page,
+    PAGE_SIZE,
+  );
+  const totalPages = eventsData ? Math.max(1, Math.ceil(eventsData.total / PAGE_SIZE)) : 1;
   const validateMutation = useValidateTicketMutation(selectedEventId ?? "");
 
   async function validate(code: string) {
@@ -62,7 +78,7 @@ export default function GatePage() {
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar evento por nome..."
             className="pl-9"
           />
@@ -71,7 +87,7 @@ export default function GatePage() {
         {eventsLoading ? (
           <PageLoader label="Carregando eventos..." />
         ) : eventsData && eventsData.items.length > 0 ? (
-          <div className="space-y-3">
+          <div className={isPlaceholderData ? "space-y-3 opacity-60" : "space-y-3"}>
             {eventsData.items.map((event, index) => (
               <motion.div
                 key={event.id}
@@ -116,6 +132,32 @@ export default function GatePage() {
               ? "Nenhum evento encontrado para essa busca."
               : "Nenhum evento publicado no momento."}
           </p>
+        )}
+
+        {!eventsLoading && eventsData && eventsData.total > PAGE_SIZE && (
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Página {page} de {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Próxima
+              </Button>
+            </div>
+          </div>
         )}
       </main>
     );
