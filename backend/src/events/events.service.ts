@@ -17,6 +17,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventListQueryDto } from './dto/event-list-query.dto';
+import { OrganizerEventListQueryDto } from './dto/organizer-event-list-query.dto';
 import { EVENTS_LIMITS } from './events.constants';
 import { generateSeatsForSection } from './utils/seat-label.util';
 
@@ -398,14 +399,45 @@ export class EventsService {
     return this.toSummary(event);
   }
 
-  async findMine(organizerId: string) {
-    const events = await this.prisma.event.findMany({
-      where: { organizerId },
-      orderBy: { createdAt: 'desc' },
+  // Usado pelas telas de detalhe/edição do organizador — pedir só o evento
+  // que interessa em vez de puxar a lista paginada inteira e filtrar no
+  // cliente, que quebraria assim que o organizador tivesse mais eventos
+  // que cabem numa página.
+  async findMineById(organizerId: string, eventId: string) {
+    const event = await this.findOwnedEventOrThrow(organizerId, eventId);
+    const withSections = await this.prisma.event.findUniqueOrThrow({
+      where: { id: event.id },
       include: { sections: true },
     });
+    return this.toSummary(withSections);
+  }
 
-    return events.map((event) => this.toSummary(event));
+  async findMine(organizerId: string, query: OrganizerEventListQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
+
+    const where: Prisma.EventWhereInput = {
+      organizerId,
+      ...(query.status ? { status: query.status } : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.event.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { sections: true },
+      }),
+      this.prisma.event.count({ where }),
+    ]);
+
+    return {
+      items: items.map((event) => this.toSummary(event)),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   private toSummary(event: EventWithSections) {

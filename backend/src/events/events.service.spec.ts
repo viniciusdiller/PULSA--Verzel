@@ -343,7 +343,7 @@ describe('EventsService', () => {
   });
 
   describe('findMine', () => {
-    it('retorna todos os eventos do organizador, em qualquer status, com preço mínimo calculado', async () => {
+    it('retorna os eventos do organizador paginados, em qualquer status, com preço mínimo calculado', async () => {
       prisma.event.findMany.mockResolvedValue([
         {
           id: 'e1',
@@ -358,14 +358,76 @@ describe('EventsService', () => {
           sections: [{ priceCents: 2000 }, { priceCents: 500 }],
         },
       ]);
+      prisma.event.count.mockResolvedValue(2);
 
-      const result = await service.findMine('organizer-1');
+      const result = await service.findMine('organizer-1', {});
 
       expect(prisma.event.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { organizerId: 'organizer-1' } }),
+        expect.objectContaining({
+          where: { organizerId: 'organizer-1' },
+          skip: 0,
+          take: 10,
+        }),
       );
-      expect(result[0].fromPriceCents).toBe(0);
-      expect(result[1].fromPriceCents).toBe(500);
+      expect(result.items[0].fromPriceCents).toBe(0);
+      expect(result.items[1].fromPriceCents).toBe(500);
+      expect(result).toMatchObject({ total: 2, page: 1, pageSize: 10 });
+    });
+
+    it('filtra por status e pagina de acordo com page/pageSize', async () => {
+      prisma.event.findMany.mockResolvedValue([]);
+      prisma.event.count.mockResolvedValue(0);
+
+      await service.findMine('organizer-1', {
+        status: EventStatus.CANCELED,
+        page: 2,
+        pageSize: 5,
+      });
+
+      expect(prisma.event.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { organizerId: 'organizer-1', status: EventStatus.CANCELED },
+          skip: 5,
+          take: 5,
+        }),
+      );
+    });
+  });
+
+  describe('findMineById', () => {
+    it('retorna o evento do organizador dono, com preço mínimo calculado', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.DRAFT,
+      });
+      prisma.event.findUniqueOrThrow.mockResolvedValue({
+        id: 'event-1',
+        sections: [{ priceCents: 3000 }],
+      });
+
+      const result = await service.findMineById('organizer-1', 'event-1');
+
+      expect(result.fromPriceCents).toBe(3000);
+    });
+
+    it('rejeita com NotFound quando o evento não existe', async () => {
+      prisma.event.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.findMineById('organizer-1', 'evento-inexistente'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejeita com Forbidden quando o evento não pertence ao organizador', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'outro-organizador',
+      });
+
+      await expect(
+        service.findMineById('organizer-1', 'event-1'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

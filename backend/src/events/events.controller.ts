@@ -17,6 +17,7 @@ import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventListQueryDto } from './dto/event-list-query.dto';
+import { OrganizerEventListQueryDto } from './dto/organizer-event-list-query.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -107,10 +108,28 @@ export class EventsController {
   @Roles(Role.ORGANIZER)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Lista os eventos do organizador autenticado (qualquer status)',
+    summary:
+      'Lista paginada dos eventos do organizador autenticado, com filtro opcional por status',
   })
-  findMine(@CurrentUser() user: AuthenticatedUser) {
-    return this.eventsService.findMine(user.id);
+  findMine(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: OrganizerEventListQueryDto,
+  ) {
+    return this.eventsService.findMine(user.id, query);
+  }
+
+  @Get('organizer/mine/:id')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Detalhe de um evento do organizador autenticado (qualquer status)',
+  })
+  findMineById(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.findMineById(user.id, id);
   }
 
   @Public()
