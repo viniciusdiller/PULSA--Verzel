@@ -41,6 +41,7 @@ describe('ReservationsService', () => {
     $executeRaw: jest.Mock;
     reservation: {
       findFirst: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
       create: jest.Mock<
         Promise<Record<string, unknown>>,
         [ReservationCreateArgs]
@@ -58,6 +59,7 @@ describe('ReservationsService', () => {
       $executeRaw: jest.fn().mockResolvedValue(0),
       reservation: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findUniqueOrThrow: jest.fn(),
         create: jest.fn<
           Promise<Record<string, unknown>>,
           [ReservationCreateArgs]
@@ -435,6 +437,75 @@ describe('ReservationsService', () => {
       expect(ticketsService.issueForReservation).not.toHaveBeenCalled();
       expect(result.ticket).toBeNull();
       expect(result.reservation.status).toBe(ReservationStatus.DECLINED);
+    });
+  });
+
+  describe('cancel', () => {
+    const holdingReservation = {
+      id: 'res-1',
+      customerId: 'cust-1',
+      seatId: 'seat-1',
+      status: ReservationStatus.HOLDING,
+      holdExpiresAt: futureDate(),
+    };
+
+    it('rejeita com NotFound quando a reserva não existe', async () => {
+      prisma.reservation.findUnique.mockResolvedValue(null);
+      await expect(service.cancel('cust-1', 'res-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('rejeita com Forbidden quando a reserva pertence a outro cliente', async () => {
+      prisma.reservation.findUnique.mockResolvedValue({
+        ...holdingReservation,
+        customerId: 'outro',
+      });
+      await expect(service.cancel('cust-1', 'res-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('rejeita com BadRequest quando a reserva não está mais em HOLDING', async () => {
+      prisma.reservation.findUnique.mockResolvedValue({
+        ...holdingReservation,
+        status: ReservationStatus.PAID,
+      });
+      await expect(service.cancel('cust-1', 'res-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('cancela a reserva e libera o assento de volta pra AVAILABLE', async () => {
+      prisma.reservation.findUnique.mockResolvedValue(holdingReservation);
+      tx.reservation.updateMany.mockResolvedValue({ count: 1 });
+      tx.reservation.findUniqueOrThrow.mockResolvedValue({
+        ...holdingReservation,
+        status: ReservationStatus.CANCELED,
+      });
+
+      const result = await service.cancel('cust-1', 'res-1');
+
+      expect(tx.reservation.updateMany).toHaveBeenCalledWith({
+        where: { id: 'res-1', status: ReservationStatus.HOLDING },
+        data: { status: ReservationStatus.CANCELED },
+      });
+      expect(tx.seat.updateMany).toHaveBeenCalledWith({
+        where: { id: 'seat-1', status: SeatStatus.HELD },
+        data: { status: SeatStatus.AVAILABLE },
+      });
+      expect(result.status).toBe(ReservationStatus.CANCELED);
+    });
+
+    it('trata como BadRequest quando outra operação (ex. pagamento) venceu a corrida antes do cancelamento', async () => {
+      prisma.reservation.findUnique.mockResolvedValue(holdingReservation);
+      tx.reservation.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.cancel('cust-1', 'res-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(tx.seat.updateMany).not.toHaveBeenCalled();
     });
   });
 

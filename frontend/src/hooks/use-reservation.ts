@@ -29,6 +29,22 @@ export function useReservationQuery(reservationId: string | null) {
   });
 }
 
+// Desistência explícita antes de pagar — libera o assento na hora em vez
+// de deixar o cliente (e qualquer outra pessoa de olho no mesmo assento)
+// esperando o TTL do hold expirar sozinho.
+export function useCancelReservationMutation(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (reservationId: string) => {
+      const { data } = await apiClient.delete<Reservation>(`/reservations/${reservationId}`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["events", eventId, "seatmap"] });
+    },
+  });
+}
+
 export function usePayReservationMutation(eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({

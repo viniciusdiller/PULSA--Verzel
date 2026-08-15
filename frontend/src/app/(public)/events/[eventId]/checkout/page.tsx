@@ -11,7 +11,11 @@ import { motion, AnimatePresence } from "motion/react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useSeatMapQuery } from "@/hooks/use-events";
-import { useHoldSeatMutation, usePayReservationMutation } from "@/hooks/use-reservation";
+import {
+  useCancelReservationMutation,
+  useHoldSeatMutation,
+  usePayReservationMutation,
+} from "@/hooks/use-reservation";
 import { useCountdown, formatCountdown } from "@/hooks/use-countdown";
 import { SeatMap } from "@/components/seatmap/seat-map";
 import { Button } from "@/components/ui/button";
@@ -51,6 +55,7 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
   const { data: seatMap, isLoading: seatMapLoading } = useSeatMapQuery(eventId);
   const holdMutation = useHoldSeatMutation(eventId);
   const payMutation = usePayReservationMutation(eventId);
+  const cancelMutation = useCancelReservationMutation(eventId);
 
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [payResult, setPayResult] = useState<PayResult | null>(null);
@@ -98,6 +103,22 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
     setReservation(null);
     setPayResult(null);
     form.reset();
+  }
+
+  // Cancelamento de verdade no backend, não só reset de tela — sem isso o
+  // assento continuava HELD (travado pra qualquer outra pessoa) até o TTL
+  // de 7min esgotar sozinho, mesmo com o cliente já tendo desistido aqui.
+  async function handleCancelReservation() {
+    if (reservation) {
+      try {
+        await cancelMutation.mutateAsync(reservation.id);
+      } catch {
+        // Se já não estava mais em HOLDING (pagou/expirou em outra aba
+        // entre o clique e a resposta), a intenção continua a mesma:
+        // sair dessa tela. Segue o fluxo normalmente.
+      }
+    }
+    resetToSeatSelection();
   }
 
   if (authLoading || seatMapLoading) {
@@ -198,7 +219,7 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
                 <p className="text-sm text-muted-foreground">
                   O tempo da sua reserva esgotou. Escolha um assento novamente.
                 </p>
-                <Button onClick={resetToSeatSelection}>Voltar ao mapa</Button>
+                <Button onClick={handleCancelReservation}>Voltar ao mapa</Button>
               </div>
             ) : (
               <Form {...form}>
@@ -229,8 +250,16 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
                       "Pagar"
                     )}
                   </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={resetToSeatSelection}>
-                    Cancelar e escolher outro assento
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={cancelMutation.isPending}
+                    onClick={handleCancelReservation}
+                  >
+                    {cancelMutation.isPending
+                      ? "Cancelando..."
+                      : "Cancelar e escolher outro assento"}
                   </Button>
                 </form>
               </Form>
