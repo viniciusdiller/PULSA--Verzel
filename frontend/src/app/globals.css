@@ -219,3 +219,24 @@
 ::view-transition-new(root) {
   z-index: 2;
 }
+
+/* Leitor de QR da portaria (qr-scanner.tsx): a lib html5-qrcode cria o
+   <video> na mão e só define `width` (px, igual ao container) —
+   `height` fica em "auto", então sem isso o vídeo assume a proporção
+   NATIVA da câmera (normalmente 16:9) em vez de preencher o container
+   quadrado, sobrando uma faixa preta enorme embaixo e reduzindo a área
+   de fato capturada. `aspectRatio: 1` já é pedido à câmera via
+   applyConstraints (ver qr-scanner.tsx), mas é uma constraint "ideal",
+   não garantida — este `!important` é a rede de segurança que força o
+   vídeo a preencher o quadrado mesmo se a câmera devolver outra
+   proporção. Sem `object-fit` mesmo (fica "fill"/esticado, o default):
+   a lib calcula a região de recorte pro decode com uma razão simples
+   `videoWidth/clientWidth` por eixo (html5-qrcode.js:565-566), que só
+   bate com o que é mostrado na tela se o vídeo estica pra caber, sem
+   cortar borda — `object-fit: cover` deixaria a prévia mais bonita,
+   mas desalinharia a área realmente decodificada da área mostrada,
+   reintroduzindo o mesmo bug que este CSS existe pra resolver. */
+#gate-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+}

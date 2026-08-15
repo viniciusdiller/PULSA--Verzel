@@ -39,17 +39,24 @@ export function QrScanner({
         { facingMode: "environment" },
         {
           fps: 10,
-          // Função em vez de número fixo: antes usávamos qrbox:240, que
-          // ficava bem menor que o container real (que cresce até
-          // max-w-xs = 320px) — a lib só decodifica DENTRO desse
-          // quadro, então a área de leitura de verdade era um
-          // retângulo pequeno no centro, sem bater com a moldura em L
-          // decorativa (maior) desenhada por cima em gate/page.tsx.
-          // Aqui o quadro de leitura passa a ser calculado a partir do
-          // viewfinder real, com o mesmo respiro (16px cada lado) da
-          // moldura decorativa — os dois ficam alinhados, e a área
-          // funcional de leitura fica bem maior (mais fácil de
-          // enquadrar o QR e ler de verdade).
+          // Causa raiz do "retângulo menor do que devia": a lib só
+          // aplica `width` em px no <video> (igual ao container) e
+          // deixa a altura em "auto" — sem isso, ela assume a proporção
+          // NATIVA da câmera (tipicamente 16:9), então dentro do nosso
+          // container quadrado (aspect-square) o vídeo de verdade virava
+          // uma faixa curta (ex.: 320×180) colada no topo, sobrando uma
+          // área preta enorme embaixo — a moldura em L (desenhada por
+          // cima, cobrindo o quadrado inteiro) prometia uma área de
+          // leitura que boa parte nem tinha vídeo, só preto. Por isso o
+          // QR não lia mesmo bem enquadrado: fora da faixa real de
+          // vídeo, não tinha como ser capturado. `aspectRatio: 1` pede
+          // pra própria câmera (via applyConstraints) entregar um stream
+          // ~quadrado, preenchendo o container de verdade.
+          aspectRatio: 1,
+          // Quadro de leitura como função do viewfinder real (que agora
+          // é de fato ~quadrado), com o mesmo respiro (16px cada lado)
+          // da moldura decorativa em gate/page.tsx — os dois ficam
+          // alinhados visualmente.
           qrbox: (viewfinderWidth, viewfinderHeight) => {
             const size = Math.max(180, Math.min(viewfinderWidth, viewfinderHeight) - 32);
             return { width: size, height: size };
