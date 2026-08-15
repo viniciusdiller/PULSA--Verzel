@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useEventsQuery } from "@/hooks/use-events";
+import { useEventsQuery, useFeaturedEventsQuery } from "@/hooks/use-events";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { EventCard } from "@/components/events/event-card";
 import { HeroEvent } from "@/components/home/hero-event";
+import { FeaturedCarousel } from "@/components/home/featured-carousel";
+import { CategorySections } from "@/components/home/category-sections";
 import { CityChips } from "@/components/home/city-chips";
 import { TrustSection } from "@/components/home/trust-section";
 import { CtaBand } from "@/components/home/cta-band";
@@ -26,11 +28,17 @@ export default function EventsListPage() {
     debouncedSearch,
     selectedCity ?? undefined,
   );
+  const { data: featuredEvents } = useFeaturedEventsQuery();
+
+  const isBrowsingUnfiltered = !debouncedSearch && !selectedCity;
 
   const heroEvent = useMemo(() => {
-    if (debouncedSearch || selectedCity) return null;
+    // A curadoria manual (featuredEvents) tem prioridade sobre a
+    // heurística de "evento mais próximo" — só cai pro heurístico quando
+    // nenhum organizador destacou nada ainda.
+    if (!isBrowsingUnfiltered || (featuredEvents && featuredEvents.length > 0)) return null;
     return allData?.items[0] ?? null;
-  }, [allData, debouncedSearch, selectedCity]);
+  }, [allData, isBrowsingUnfiltered, featuredEvents]);
 
   const isLoading = allLoading || filteredLoading;
 
@@ -51,6 +59,9 @@ export default function EventsListPage() {
         />
       </div>
 
+      {isBrowsingUnfiltered && featuredEvents && featuredEvents.length > 0 && (
+        <FeaturedCarousel events={featuredEvents} />
+      )}
       {heroEvent && <HeroEvent event={heroEvent} />}
 
       {allData && allData.items.length > 0 && (
@@ -84,6 +95,8 @@ export default function EventsListPage() {
           </p>
         )}
       </div>
+
+      {isBrowsingUnfiltered && allData && <CategorySections events={allData.items} />}
 
       <TrustSection />
       <CtaBand />

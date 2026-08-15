@@ -17,6 +17,16 @@ export function useEventsQuery(search: string, city?: string) {
   });
 }
 
+export function useFeaturedEventsQuery() {
+  return useQuery({
+    queryKey: ["events", "featured"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<EventSummary[]>("/events/featured");
+      return data;
+    },
+  });
+}
+
 export function useEventQuery(eventId: string) {
   return useQuery({
     queryKey: ["events", eventId],

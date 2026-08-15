@@ -11,6 +11,8 @@ import {
   useUnpublishEventMutation,
   useDeleteEventMutation,
   usePurgeEventMutation,
+  useFeatureEventMutation,
+  useUnfeatureEventMutation,
 } from "@/hooks/use-organizer-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,8 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
   const unpublishMutation = useUnpublishEventMutation();
   const deleteMutation = useDeleteEventMutation();
   const purgeMutation = usePurgeEventMutation();
+  const featureMutation = useFeatureEventMutation();
+  const unfeatureMutation = useUnfeatureEventMutation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
 
@@ -80,6 +84,20 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
     }
   }
 
+  async function handleToggleFeatured() {
+    try {
+      if (event?.featured) {
+        await unfeatureMutation.mutateAsync(eventId);
+        toast.success("Removido dos destaques.");
+      } else {
+        await featureMutation.mutateAsync(eventId);
+        toast.success("Adicionado aos destaques da home.");
+      }
+    } catch (error) {
+      toast.error(extractErrorMessage(error) ?? "Não foi possível atualizar os destaques.");
+    }
+  }
+
   async function handlePurge() {
     try {
       await purgeMutation.mutateAsync(eventId);
@@ -116,11 +134,13 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
         ← Meus eventos
       </Link>
 
-      <div className="mt-4 mb-6 flex items-center gap-3">
+      <div className="mt-4 mb-6 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl">{event.title}</h1>
         <Badge variant={event.status === "PUBLISHED" ? "default" : "secondary"}>
           {event.status === "DRAFT" ? "Rascunho" : event.status === "PUBLISHED" ? "Publicado" : "Cancelado"}
         </Badge>
+        {event.category && <Badge variant="outline">{event.category}</Badge>}
+        {event.featured && <Badge variant="violet">Em destaque</Badge>}
       </div>
 
       <p className="text-muted-foreground">
@@ -173,6 +193,22 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
                 </>
               ) : (
                 "Despublicar"
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={featureMutation.isPending || unfeatureMutation.isPending}
+              onClick={handleToggleFeatured}
+            >
+              {featureMutation.isPending || unfeatureMutation.isPending ? (
+                <>
+                  <LoaderSignalBars size="sm" className="mr-1.5" />
+                  Atualizando...
+                </>
+              ) : event.featured ? (
+                "Remover dos destaques"
+              ) : (
+                "Adicionar aos destaques"
               )}
             </Button>
           </>

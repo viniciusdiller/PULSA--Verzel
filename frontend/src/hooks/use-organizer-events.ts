@@ -54,6 +54,7 @@ export interface CreateEventInput {
   venueAddress: string;
   externalId: string;
   externalSource?: string;
+  category?: string;
   sections: CreateSectionInput[];
 }
 
@@ -98,9 +99,40 @@ export function useUnpublishEventMutation() {
   });
 }
 
+// Vitrine "Em destaque" — máx. 4 eventos, compartilhada entre
+// organizadores (o limite é checado no backend, não aqui).
+export function useFeatureEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      const { data } = await apiClient.patch<EventSummary>(`/events/${eventId}/feature`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["organizer", "events"] });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useUnfeatureEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      const { data } = await apiClient.patch<EventSummary>(`/events/${eventId}/unfeature`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["organizer", "events"] });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
 export interface UpdateEventInput {
   description?: string;
   venueAddress?: string;
+  category?: string;
   sections?: CreateSectionInput[];
 }
 
