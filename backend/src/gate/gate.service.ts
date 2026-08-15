@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Ticket, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { GateHistoryTicketsQueryDto } from './dto/gate-history-tickets-query.dto';
 import {
   SHORT_CODE_PATTERN,
   TicketQrPayload,
@@ -22,6 +23,30 @@ export interface GateValidationResult {
   ticket?: GateTicketSummary;
   usedAt?: Date | null;
   usedByGateUserId?: string | null;
+}
+
+export interface GateHistoryEventSummary {
+  eventId: string;
+  eventTitle: string;
+  venueCity: string;
+  startsAt: Date;
+  validatedCount: number;
+  lastValidatedAt: Date | null;
+}
+
+export interface GateHistoryTicketItem {
+  ticketId: string;
+  seatLabel: string;
+  ownerName: string;
+  usedAt: Date | null;
+  shortCode: string;
+}
+
+export interface GateHistoryTicketsPage {
+  items: GateHistoryTicketItem[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 type TicketWithRelations = Ticket & {
@@ -124,6 +149,98 @@ export class GateService {
       ticket: this.summarize(ticket),
       usedAt: now,
       usedByGateUserId: gateUserId,
+    };
+  }
+
+  // Um evento por linha, com quantos ingressos este atendente já validou
+  // ali — só ingressos USED (tentativas recusadas nunca viram linha no
+  // banco, então o filtro por status já é o filtro certo). Duas consultas
+  // em vez de um único join porque o groupBy precisa vir primeiro pra
+  // definir a ordem (mais recente validado primeiro); o findMany com "in"
+  // não preserva a ordem dos ids, por isso remontamos na ordem do groupBy.
+  async listValidatedEvents(
+    gateUserId: string,
+  ): Promise<GateHistoryEventSummary[]> {
+    const grouped = await this.prisma.ticket.groupBy({
+      by: ['eventId'],
+      where: { usedByGateUserId: gateUserId, status: TicketStatus.USED },
+      _count: { _all: true },
+      _max: { usedAt: true },
+      orderBy: { _max: { usedAt: 'desc' } },
+    });
+
+    if (grouped.length === 0) {
+      return [];
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: { id: { in: grouped.map((g) => g.eventId) } },
+      select: { id: true, title: true, venueCity: true, startsAt: true },
+    });
+    const eventById = new Map(events.map((e) => [e.id, e]));
+
+    return grouped
+      .map((g) => {
+        const event = eventById.get(g.eventId);
+        if (!event) return null;
+        return {
+          eventId: g.eventId,
+          eventTitle: event.title,
+          venueCity: event.venueCity,
+          startsAt: event.startsAt,
+          validatedCount: g._count._all,
+          lastValidatedAt: g._max.usedAt,
+        };
+      })
+      .filter(
+        (summary): summary is GateHistoryEventSummary => summary !== null,
+      );
+  }
+
+  // Sem $transaction de propósito: diferente da listagem pública/do
+  // organizador (sensíveis a estado mutável concorrente tipo publicar/
+  // despublicar no meio da leitura), aqui as linhas já são USED — do
+  // ponto de vista de quem está revendo o próprio histórico, é
+  // essencialmente append-only. Não vale segurar um slot de transação
+  // pra uma leitura de baixa prioridade.
+  async listValidatedTickets(
+    gateUserId: string,
+    eventId: string,
+    query: GateHistoryTicketsQueryDto,
+  ): Promise<GateHistoryTicketsPage> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
+    const where = {
+      eventId,
+      usedByGateUserId: gateUserId,
+      status: TicketStatus.USED,
+    };
+
+    const [tickets, total] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where,
+        include: {
+          seat: { select: { label: true } },
+          owner: { select: { name: true } },
+        },
+        orderBy: { usedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+
+    return {
+      items: tickets.map((ticket) => ({
+        ticketId: ticket.id,
+        seatLabel: ticket.seat.label,
+        ownerName: ticket.owner.name,
+        usedAt: ticket.usedAt,
+        shortCode: ticket.shortCode,
+      })),
+      total,
+      page,
+      pageSize,
     };
   }
 

@@ -1,9 +1,18 @@
-import { Body, Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { GateService } from './gate.service';
 import { ValidateTicketDto } from './dto/validate-ticket.dto';
+import { GateHistoryTicketsQueryDto } from './dto/gate-history-tickets-query.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -30,5 +39,27 @@ export class GateController {
     @Body() dto: ValidateTicketDto,
   ) {
     return this.gateService.validate(eventId, dto.code, user.id);
+  }
+
+  @Get('history/events')
+  @ApiOperation({
+    summary:
+      'Lista os eventos em que este atendente já validou algum ingresso, com a contagem por evento',
+  })
+  listValidatedEvents(@CurrentUser() user: AuthenticatedUser) {
+    return this.gateService.listValidatedEvents(user.id);
+  }
+
+  @Get('history/events/:eventId/tickets')
+  @ApiOperation({
+    summary:
+      'Lista paginada dos ingressos que este atendente validou num evento específico',
+  })
+  listValidatedTickets(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Query() query: GateHistoryTicketsQueryDto,
+  ) {
+    return this.gateService.listValidatedTickets(user.id, eventId, query);
   }
 }
