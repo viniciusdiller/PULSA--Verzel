@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Ticket } from "lucide-react";
 import { useMyTicketsQuery } from "@/hooks/use-tickets";
 import { TicketCard } from "@/components/tickets/ticket-card";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -22,13 +23,16 @@ export default function MyTicketsPage() {
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground">
-          Você ainda não tem ingressos.{" "}
-          <Link href="/" className="underline">
-            Ver eventos em cartaz
-          </Link>
-          .
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 py-16 text-center">
+          <Ticket className="size-8 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            Você ainda não tem ingressos.{" "}
+            <Link href="/" className="underline">
+              Ver eventos em cartaz
+            </Link>
+            .
+          </p>
+        </div>
       )}
     </main>
   );

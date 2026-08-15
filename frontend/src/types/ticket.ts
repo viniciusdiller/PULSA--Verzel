@@ -1,6 +1,7 @@
 export interface TicketEventInfo {
   id: string;
   title: string;
+  imageUrl: string | null;
   startsAt: string;
   venueName: string;
   venueCity: string;
