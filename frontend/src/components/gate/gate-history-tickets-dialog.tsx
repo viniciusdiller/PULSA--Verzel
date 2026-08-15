@@ -43,12 +43,16 @@ export function GateHistoryTicketsDialog({ event }: { event: GateHistoryEventSum
           Ver todos ({event.validatedCount})
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[80vh] overflow-y-auto">
-        {/* pr-8 reserva espaço pro X de fechar (absolute top-2 right-2 no
-            DialogContent) — sem isso um título comprido invadia embaixo
-            do botão. */}
-        <DialogHeader className="pr-8">
-          <DialogTitle className="truncate">{event.eventTitle}</DialogTitle>
+      <DialogContent className="max-h-[80vh] overflow-x-hidden overflow-y-auto">
+        {/* min-w-0 é o que de fato faz o truncate funcionar aqui — o
+            DialogContent é display:grid, e um item de grid tem
+            min-width:auto por padrão, que ignora truncate e deixa o
+            título comprido estourar a largura do dialog (causando o
+            scroll lateral). pr-8 reserva espaço pro X (absolute top-2
+            right-2 no DialogContent) e mt-1 dá uma folga a mais no topo,
+            pra nunca ficar colado nele. */}
+        <DialogHeader className="min-w-0 pr-8">
+          <DialogTitle className="mt-1 truncate">{event.eventTitle}</DialogTitle>
           <DialogDescription>
             Todos os ingressos que você validou neste evento.
           </DialogDescription>
