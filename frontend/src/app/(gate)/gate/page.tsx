@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { isAxiosError } from "axios";
 
 import { useEventsQuery } from "@/hooks/use-events";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useValidateTicketMutation } from "@/hooks/use-gate";
 import { QrScanner } from "@/components/gate/qr-scanner";
 import { GateResult } from "@/components/gate/gate-result";
@@ -21,8 +22,10 @@ export default function GatePage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState("");
   const [result, setResult] = useState<GateValidationResult | null>(null);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 450);
 
-  const { data: eventsData, isLoading: eventsLoading } = useEventsQuery("");
+  const { data: eventsData, isLoading: eventsLoading } = useEventsQuery(debouncedSearch);
   const validateMutation = useValidateTicketMutation(selectedEventId ?? "");
 
   async function validate(code: string) {
@@ -50,7 +53,14 @@ export default function GatePage() {
     return (
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Portaria</p>
-        <h1 className="font-heading mb-8 text-3xl">Qual evento você está checando?</h1>
+        <h1 className="font-heading mb-6 text-3xl">Qual evento você está checando?</h1>
+
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar evento por nome..."
+          className="mb-6 max-w-sm"
+        />
 
         {eventsLoading ? (
           <PageLoader label="Carregando eventos..." />
@@ -72,7 +82,11 @@ export default function GatePage() {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">Nenhum evento publicado no momento.</p>
+          <p className="text-muted-foreground">
+            {search
+              ? "Nenhum evento encontrado para essa busca."
+              : "Nenhum evento publicado no momento."}
+          </p>
         )}
       </main>
     );
