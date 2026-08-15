@@ -59,6 +59,7 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
   const payMutation = usePayReservationMutation(eventId);
   const cancelMutation = useCancelReservationMutation(eventId);
 
+  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [payResult, setPayResult] = useState<PayResult | null>(null);
   const [useBalance, setUseBalance] = useState(false);
@@ -74,13 +75,24 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
     defaultValues: { cardNumber: "" },
   });
 
-  async function handleSelectSeat(seat: Seat) {
+  // Clicar num assento só pré-seleciona (estado local, sem chamar o
+  // backend ainda) — o hold de verdade (e o início da contagem de 7min)
+  // só acontece quando o cliente confirma, em handleConfirmSeat. Isso
+  // evita reservar um assento sem querer com um clique acidental antes
+  // de a pessoa decidir de fato.
+  function handleSelectSeat(seat: Seat) {
+    setSelectedSeat(seat);
+  }
+
+  async function handleConfirmSeat() {
+    if (!selectedSeat) return;
     try {
-      const created = await holdMutation.mutateAsync(seat.id);
+      const created = await holdMutation.mutateAsync(selectedSeat.id);
       setReservation(created);
-      toast.success(`Assento ${seat.label} reservado por 7 minutos.`);
+      toast.success(`Assento ${selectedSeat.label} reservado por 7 minutos.`);
     } catch (error) {
       toast.error(extractErrorMessage(error, "Não foi possível reservar este assento."));
+      setSelectedSeat(null);
     }
   }
 
@@ -116,6 +128,7 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
   function resetToSeatSelection() {
     setReservation(null);
     setPayResult(null);
+    setSelectedSeat(null);
     form.reset();
   }
 
@@ -336,10 +349,44 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
         >
           <SeatMap
             seatMap={seatMap}
+            pendingSeatId={selectedSeat?.id ?? null}
             disabled={holdMutation.isPending}
             onSelectSeat={handleSelectSeat}
           />
         </motion.div>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedSeat && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.2 }}
+            className="sticky bottom-4 mt-8 flex items-center justify-between rounded-xl border border-border bg-card px-5 py-4 shadow-card-hover"
+          >
+            <div>
+              <p className="text-sm text-muted-foreground">Assento selecionado</p>
+              <p className="font-heading text-lg">
+                {selectedSeat.label}
+                {" — "}
+                {formatCentsToBRL(
+                  seatMap.sections.find((s) => s.id === selectedSeat.sectionId)?.priceCents ?? 0,
+                )}
+              </p>
+            </div>
+            <Button size="lg" disabled={holdMutation.isPending} onClick={handleConfirmSeat}>
+              {holdMutation.isPending ? (
+                <>
+                  <LoaderSignalBars size="sm" className="mr-1.5" />
+                  Confirmando...
+                </>
+              ) : (
+                "Confirmar assento"
+              )}
+            </Button>
+          </motion.div>
+        )}
       </AnimatePresence>
     </main>
   );
