@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/use-auth";
 import { apiClient } from "@/lib/api-client";
-import { roleHomePath, type AuthUser } from "@/lib/auth";
+import { loginRedirectPath, type AuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace(roleHomePath(user.role));
+      router.replace(loginRedirectPath(user.role));
     }
   }, [isLoading, user, router]);
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
       const { data } = await apiClient.post<LoginResponse>("/auth/login", values);
       login(data.accessToken, data.user);
       toast.success(`Bem-vindo, ${data.user.name}`);
-      router.push(roleHomePath(data.user.role));
+      router.push(loginRedirectPath(data.user.role));
     } catch (error) {
       const message = isAxiosError(error)
         ? (error.response?.data as { message?: string } | undefined)?.message

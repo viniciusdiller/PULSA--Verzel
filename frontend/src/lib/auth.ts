@@ -42,6 +42,22 @@ export function roleHomePath(role: Role): string {
   }
 }
 
+// Pra onde o login manda cada papel — diferente de roleHomePath (que
+// continua sendo "a seção própria do papel", usada pelo RouteGuard e
+// pelo link de atalho no header). Cliente e organizador entram pela
+// home pública (vitrine de eventos); portaria continua indo direto
+// pra tela de leitura de QR, que é o trabalho do dia a dia dela.
+export function loginRedirectPath(role: Role): string {
+  switch (role) {
+    case "GATE_STAFF":
+      return roleHomePath(role);
+    case "ORGANIZER":
+    case "CUSTOMER":
+    default:
+      return "/";
+  }
+}
+
 export function roleNavLabel(role: Role): string {
   switch (role) {
     case "ORGANIZER":
