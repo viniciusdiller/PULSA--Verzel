@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { useCatalogSearchQuery } from "@/hooks/use-catalog";
 import { useCreateEventMutation } from "@/hooks/use-organizer-events";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,11 +45,36 @@ const configureSchema = z.object({
 
 type ConfigureFormValues = z.infer<typeof configureSchema>;
 
+// A mensagem antiga era fixa e sempre culpava a TICKETMASTER_API_KEY,
+// mesmo quando a causa real era outra (rate-limit do nosso próprio
+// endpoint, timeout de rede, etc.) — agora reflete o motivo de verdade.
+function describeCatalogError(error: unknown): string {
+  if (isAxiosError(error)) {
+    if (error.response?.status === 429) {
+      return "Muitas buscas em sequência — aguarde alguns segundos e tente de novo.";
+    }
+    const backendMessage = (error.response?.data as { message?: string } | undefined)
+      ?.message;
+    if (backendMessage) {
+      return backendMessage;
+    }
+  }
+  return "Não foi possível buscar no catálogo agora. Tente novamente em instantes.";
+}
+
 export default function NewEventPage() {
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<CatalogEvent | null>(null);
-  const { data: searchResult, isLoading, isError } = useCatalogSearchQuery(keyword);
+  // Sem isso, cada tecla digitada disparava uma busca — "Flamengo" vira 8
+  // requisições em ~1s, estourando o rate-limit do endpoint em segundos.
+  const debouncedKeyword = useDebouncedValue(keyword, 450);
+  const {
+    data: searchResult,
+    isLoading,
+    isError,
+    error: searchError,
+  } = useCatalogSearchQuery(debouncedKeyword);
   const createEventMutation = useCreateEventMutation();
 
   const form = useForm<ConfigureFormValues>({
@@ -128,16 +154,16 @@ export default function NewEventPage() {
 
         {isLoading && <PageLoader label="Buscando no catálogo..." />}
 
-        {isError && (
-          <p className="text-muted-foreground">
-            Catálogo indisponível no momento (verifique se a TICKETMASTER_API_KEY está
-            configurada no backend). Tente novamente em instantes.
-          </p>
-        )}
+        {isError && <p className="text-muted-foreground">{describeCatalogError(searchError)}</p>}
 
-        {!isLoading && !isError && keyword.length > 1 && searchResult?.items.length === 0 && (
-          <p className="text-muted-foreground">Nenhum resultado para &quot;{keyword}&quot;.</p>
-        )}
+        {!isLoading &&
+          !isError &&
+          debouncedKeyword.length > 1 &&
+          searchResult?.items.length === 0 && (
+            <p className="text-muted-foreground">
+              Nenhum resultado para &quot;{debouncedKeyword}&quot;.
+            </p>
+          )}
 
         <div className="space-y-3">
           {searchResult?.items.map((item) => (

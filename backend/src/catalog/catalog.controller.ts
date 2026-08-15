@@ -14,9 +14,11 @@ export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
   @Get('events')
-  // Protege a API key da Ticketmaster contra "buscar a cada tecla digitada"
-  // no front — mais apertado que o throttle global de 60/min.
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // Protege a API key da Ticketmaster contra buscas em excesso — mais
+  // apertado que o throttle global de 60/min, mas com folga suficiente pra
+  // uma sessão real de busca (o front já faz debounce de 450ms por tecla,
+  // então isso aqui é rede de segurança contra abuso, não o limite normal).
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Busca eventos no catálogo externo (Ticketmaster Discovery)',
   })
