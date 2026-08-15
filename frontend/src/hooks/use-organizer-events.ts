@@ -93,11 +93,17 @@ export function useUpdateEventMutation(eventId: string) {
   });
 }
 
+export interface DeleteEventResult {
+  hardDeleted: boolean;
+  refundedCustomers: number;
+}
+
 export function useDeleteEventMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (eventId: string) => {
-      await apiClient.delete(`/events/${eventId}`);
+      const { data } = await apiClient.delete<DeleteEventResult>(`/events/${eventId}`);
+      return data;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["organizer", "events"] });

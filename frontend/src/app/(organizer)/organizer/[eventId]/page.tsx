@@ -61,8 +61,16 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
 
   async function handleDelete() {
     try {
-      await deleteMutation.mutateAsync(eventId);
-      toast.success("Evento excluído.");
+      const result = await deleteMutation.mutateAsync(eventId);
+      if (result.hardDeleted) {
+        toast.success("Evento excluído.");
+      } else if (result.refundedCustomers > 0) {
+        toast.success(
+          `Evento cancelado. ${result.refundedCustomers} cliente${result.refundedCustomers === 1 ? "" : "s"} reembolsado${result.refundedCustomers === 1 ? "" : "s"} em saldo na plataforma.`,
+        );
+      } else {
+        toast.success("Evento cancelado.");
+      }
       router.push("/organizer");
     } catch (error) {
       setDeleteDialogOpen(false);
@@ -156,26 +164,35 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
             </Button>
           </>
         )}
-        <Button asChild variant="outline">
-          <Link href={`/organizer/${event.id}/edit`}>Editar</Link>
-        </Button>
-        <Button
-          variant="ghost"
-          className="text-destructive hover:text-destructive"
-          onClick={() => setDeleteDialogOpen(true)}
-        >
-          Excluir evento
-        </Button>
+        {event.status !== "CANCELED" && (
+          <>
+            <Button asChild variant="outline">
+              <Link href={`/organizer/${event.id}/edit`}>Editar</Link>
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              Excluir evento
+            </Button>
+          </>
+        )}
       </div>
+      {event.status === "CANCELED" && (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Este evento foi cancelado — clientes com ingresso pago já foram reembolsados em saldo.
+        </p>
+      )}
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir &quot;{event.title}&quot;?</DialogTitle>
             <DialogDescription>
-              Isso apaga o evento e todos os seus setores/assentos permanentemente — não dá pra
-              desfazer. Só funciona se este evento ainda não tiver nenhuma reserva (nem expirada
-              ou cancelada); se já tiver, despublique-o em vez de excluir.
+              Tem certeza que deseja excluir este evento? Será irreversível, e os usuários que
+              compraram ingresso para ele terão o dinheiro estornado automaticamente como saldo
+              na plataforma. Se ninguém comprou ainda, o evento simplesmente deixa de existir.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
