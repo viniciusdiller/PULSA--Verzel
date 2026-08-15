@@ -13,3 +13,27 @@ export interface GateValidationResult {
   usedAt?: string | null;
   usedByGateUserId?: string | null;
 }
+
+export interface GateHistoryEventSummary {
+  eventId: string;
+  eventTitle: string;
+  venueCity: string;
+  startsAt: string;
+  validatedCount: number;
+  lastValidatedAt: string | null;
+}
+
+export interface GateHistoryTicketItem {
+  ticketId: string;
+  seatLabel: string;
+  ownerName: string;
+  usedAt: string | null;
+  shortCode: string;
+}
+
+export interface GateHistoryTicketsPage {
+  items: GateHistoryTicketItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
