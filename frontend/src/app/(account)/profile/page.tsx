@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
+import { Calendar, KeyRound, LogOut, Mail, Ticket, User, Wallet } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useProfileQuery, useUpdateProfileMutation } from "@/hooks/use-profile";
@@ -54,6 +55,9 @@ export default function ProfilePage() {
   const { user, updateUser, logout } = useAuth();
   const { data: profile, isLoading } = useProfileQuery();
   const updateProfileMutation = useUpdateProfileMutation();
+  // Portaria não acumula/gasta saldo — mesmo corte já aplicado no
+  // site-header, aqui replicado pra não mostrar "R$ 0,00" sem sentido.
+  const showBalance = profile?.role !== "GATE_STAFF";
 
   const nameForm = useForm<NameFormValues>({
     resolver: zodResolver(nameSchema),
@@ -111,6 +115,8 @@ export default function ProfilePage() {
     );
   }
 
+  const initial = profile.name.trim().charAt(0).toUpperCase() || "?";
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-6 py-12">
       <div>
@@ -118,37 +124,63 @@ export default function ProfilePage() {
         <h1 className="font-heading text-3xl">Minha conta</h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+      <Card className="overflow-hidden py-0 shadow-card">
+        <div className="flex items-center gap-4 bg-gradient-to-br from-violet/15 via-transparent to-primary/10 p-6">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet to-primary font-heading text-2xl font-semibold text-white">
+            {initial}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="font-heading text-xl">{profile.name}</CardTitle>
-              <CardDescription>{profile.email}</CardDescription>
+              <Badge variant="outline">{roleLabel(profile.role)}</Badge>
             </div>
-            <Badge variant="outline">{roleLabel(profile.role)}</Badge>
+            <CardDescription className="mt-1 flex items-center gap-1.5">
+              <Mail className="size-3.5 shrink-0" />
+              <span className="truncate">{profile.email}</span>
+            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Membro desde</p>
-            <p className="font-medium text-foreground">{formatEventDate(profile.createdAt)}</p>
+        </div>
+        <div
+          className={`grid divide-x divide-border/60 border-t border-border/60 text-sm ${
+            showBalance ? "grid-cols-3" : "grid-cols-2"
+          }`}
+        >
+          <div className="flex flex-col items-start gap-1 p-4">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Calendar className="size-3.5" />
+              Membro desde
+            </span>
+            <span className="font-medium text-foreground">
+              {formatEventDate(profile.createdAt)}
+            </span>
           </div>
-          <div>
-            <p className="text-muted-foreground">{profile.statsLabel}</p>
-            <p className="font-medium text-foreground">{profile.statsCount}</p>
+          <div className="flex flex-col items-start gap-1 p-4">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Ticket className="size-3.5" />
+              {profile.statsLabel}
+            </span>
+            <span className="font-medium text-foreground">{profile.statsCount}</span>
           </div>
-          <div>
-            <p className="text-muted-foreground">Saldo</p>
-            <p className="font-medium text-foreground">
-              {formatCentsToBRL(profile.balanceCents)}
-            </p>
-          </div>
-        </CardContent>
+          {showBalance && (
+            <div className="flex flex-col items-start gap-1 p-4">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Wallet className="size-3.5" />
+                Saldo
+              </span>
+              <span className="font-medium text-foreground">
+                {formatCentsToBRL(profile.balanceCents)}
+              </span>
+            </div>
+          )}
+        </div>
       </Card>
 
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="font-heading text-lg">Nome de exibição</CardTitle>
+          <CardTitle className="flex items-center gap-2 font-heading text-lg">
+            <User className="size-4 text-violet" />
+            Nome de exibição
+          </CardTitle>
           <CardDescription>Usado no cabeçalho e nos ingressos.</CardDescription>
         </CardHeader>
         <Form {...nameForm}>
@@ -184,9 +216,12 @@ export default function ProfilePage() {
         </Form>
       </Card>
 
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="font-heading text-lg">Trocar senha</CardTitle>
+          <CardTitle className="flex items-center gap-2 font-heading text-lg">
+            <KeyRound className="size-4 text-violet" />
+            Trocar senha
+          </CardTitle>
           <CardDescription>Peça a senha atual antes de trocar, por segurança.</CardDescription>
         </CardHeader>
         <Form {...passwordForm}>
@@ -248,13 +283,14 @@ export default function ProfilePage() {
         </Form>
       </Card>
 
-      <Card>
+      <Card className="border-destructive/30 shadow-card">
         <CardHeader>
-          <CardTitle className="font-heading text-lg">Sessão</CardTitle>
+          <CardTitle className="font-heading text-lg text-destructive">Sessão</CardTitle>
           <CardDescription>Sair da sua conta neste dispositivo.</CardDescription>
         </CardHeader>
         <CardFooter>
           <Button variant="destructive" onClick={logout}>
+            <LogOut className="size-4" />
             Sair
           </Button>
         </CardFooter>
