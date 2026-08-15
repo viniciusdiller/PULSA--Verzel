@@ -23,6 +23,8 @@ export interface EventSummary {
   organizerId: string;
   capacity: number;
   status: EventStatus;
+  category: string | null;
+  featured: boolean;
   sections: Section[];
   fromPriceCents: number;
 }

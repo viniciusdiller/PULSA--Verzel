@@ -36,6 +36,10 @@ export default function EventDetailPage(props: PageProps<"/events/[eventId]">) {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
+      <Link href="/" className="mb-4 inline-block text-sm text-muted-foreground hover:underline">
+        ← Voltar
+      </Link>
+
       {event.imageUrl && (
         <div className="relative mb-8 aspect-video w-full overflow-hidden rounded-lg bg-muted">
           <Image src={event.imageUrl} alt={event.title} fill className="object-cover" />

@@ -11,11 +11,17 @@ export interface TicketmasterVenue {
   address?: { line1?: string };
 }
 
+export interface TicketmasterClassification {
+  primary?: boolean;
+  segment?: { name?: string };
+}
+
 export interface TicketmasterEventRaw {
   id: string;
   name: string;
   images?: TicketmasterImage[];
   dates?: { start?: { dateTime?: string; localDate?: string } };
+  classifications?: TicketmasterClassification[];
   _embedded?: { venues?: TicketmasterVenue[] };
 }
 
@@ -27,6 +33,7 @@ export interface CatalogEvent {
   venueName: string;
   venueCity: string;
   venueAddress: string;
+  category: string | null;
   raw: TicketmasterEventRaw;
 }
 
@@ -52,6 +59,24 @@ export function pickBestImage(
   return byWidth[0].url;
 }
 
+// O "segment" é o nível mais alto da classificação da Ticketmaster (ex.
+// "Music", "Sports", "Arts & Theatre", "Film") — o mapeamento natural pra
+// uma categoria de evento simples. Preferimos a classificação marcada como
+// `primary`, mas caímos pra primeira disponível se nenhuma estiver marcada.
+// A Ticketmaster usa o nome literal "Undefined" quando não sabe classificar
+// o evento — tratamos isso como "sem categoria", igual a não vir nada.
+function pickCategory(
+  classifications: TicketmasterClassification[] | undefined,
+): string | null {
+  if (!classifications || classifications.length === 0) {
+    return null;
+  }
+
+  const primary = classifications.find((c) => c.primary) ?? classifications[0];
+  const name = primary.segment?.name;
+  return name && name !== 'Undefined' ? name : null;
+}
+
 export function mapTicketmasterEvent(raw: TicketmasterEventRaw): CatalogEvent {
   const venue = raw._embedded?.venues?.[0];
 
@@ -63,6 +88,7 @@ export function mapTicketmasterEvent(raw: TicketmasterEventRaw): CatalogEvent {
     venueName: venue?.name ?? '',
     venueCity: venue?.city?.name ?? '',
     venueAddress: venue?.address?.line1 ?? '',
+    category: pickCategory(raw.classifications),
     raw,
   };
 }

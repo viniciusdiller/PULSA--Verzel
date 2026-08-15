@@ -108,6 +108,17 @@ export class CreateEventDto {
   @IsString()
   externalSource?: string;
 
+  @ApiProperty({
+    example: 'Music',
+    required: false,
+    description:
+      'Categoria do evento — pré-preenchida do catálogo quando disponível',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  category?: string;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsObject()

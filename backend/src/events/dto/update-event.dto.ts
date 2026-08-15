@@ -27,6 +27,12 @@ export class UpdateEventDto {
   @MaxLength(200)
   venueAddress?: string;
 
+  @ApiPropertyOptional({ example: 'Music' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  category?: string;
+
   @ApiPropertyOptional({
     type: [CreateSectionDto],
     description:

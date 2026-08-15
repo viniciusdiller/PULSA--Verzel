@@ -56,6 +56,7 @@ describe('mapTicketmasterEvent', () => {
       venueName: 'Arena X',
       venueCity: 'São Paulo',
       venueAddress: 'Rua A, 1',
+      category: null,
       raw,
     });
   });
@@ -80,5 +81,39 @@ describe('mapTicketmasterEvent', () => {
     expect(result.venueName).toBe('');
     expect(result.venueCity).toBe('');
     expect(result.venueAddress).toBe('');
+    expect(result.category).toBeNull();
+  });
+
+  it('extrai a categoria do segment da classificação marcada como primary', () => {
+    const raw: TicketmasterEventRaw = {
+      id: 'tm-3',
+      name: 'Show com duas classificações',
+      classifications: [
+        { primary: false, segment: { name: 'Miscellaneous' } },
+        { primary: true, segment: { name: 'Music' } },
+      ],
+    };
+
+    expect(mapTicketmasterEvent(raw).category).toBe('Music');
+  });
+
+  it('cai pra primeira classificação quando nenhuma está marcada como primary', () => {
+    const raw: TicketmasterEventRaw = {
+      id: 'tm-4',
+      name: 'Show sem primary marcado',
+      classifications: [{ segment: { name: 'Sports' } }],
+    };
+
+    expect(mapTicketmasterEvent(raw).category).toBe('Sports');
+  });
+
+  it('trata o segment literal "Undefined" da Ticketmaster como sem categoria', () => {
+    const raw: TicketmasterEventRaw = {
+      id: 'tm-5',
+      name: 'Evento não classificado',
+      classifications: [{ primary: true, segment: { name: 'Undefined' } }],
+    };
+
+    expect(mapTicketmasterEvent(raw).category).toBeNull();
   });
 });

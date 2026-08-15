@@ -6,6 +6,7 @@ export interface CatalogEvent {
   venueName: string;
   venueCity: string;
   venueAddress: string;
+  category: string | null;
   raw: Record<string, unknown>;
 }
 

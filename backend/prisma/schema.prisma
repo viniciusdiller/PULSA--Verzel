@@ -80,6 +80,18 @@ model Event {
   externalId     String @unique
   externalRaw    Json?
 
+  // Segmento top-level da classificação da Ticketmaster (ex. "Music",
+  // "Sports", "Arts & Theatre", "Film") — puxado automaticamente ao
+  // importar do catálogo, mas editável pelo organizador. Usado pra
+  // agrupar a home pública em seções por categoria; pensado desde já pra
+  // acomodar um catálogo futuro que não seja só shows (ex. filmes).
+  category String?
+
+  // No máximo 4 eventos com featured=true na plataforma inteira (checado
+  // em EventsService.feature) — é o que alimenta a seção "Em destaque" da
+  // home pública. Só eventos PUBLISHED podem ser destacados.
+  featured Boolean @default(false)
+
   organizerId String
   organizer   User   @relation("EventOrganizer", fields: [organizerId], references: [id])
 
@@ -96,6 +108,8 @@ model Event {
 
   @@index([organizerId])
   @@index([status])
+  @@index([category])
+  @@index([featured])
   @@map("events")
 }
 

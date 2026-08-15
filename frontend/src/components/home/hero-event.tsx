@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { formatEventDateTime } from "@/lib/format";
 import type { EventSummary } from "@/types/event";
 
-// O evento mais próximo entre os publicados — heurística real e
-// defensável de "em destaque" (o backend já ordena por startsAt asc),
-// não um sorteio nem um evento fixo.
+// O evento mais próximo entre os publicados — heurística de fallback
+// para quando nenhum organizador escolheu eventos para o carrossel "Em
+// destaque" (FeaturedCarousel, curadoria manual via Event.featured). O
+// backend já ordena por startsAt asc, então "o mais próximo" é real, não
+// um sorteio nem um evento fixo.
 export function HeroEvent({ event }: { event: EventSummary }) {
   return (
     <motion.div
@@ -34,7 +36,7 @@ export function HeroEvent({ event }: { event: EventSummary }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10">
           <p className="text-xs font-semibold tracking-[0.2em] text-white/80 uppercase">
-            Em destaque
+            Não perca
           </p>
           <h2 className="font-heading mt-2 text-3xl font-bold text-white sm:text-5xl">
             {event.title}

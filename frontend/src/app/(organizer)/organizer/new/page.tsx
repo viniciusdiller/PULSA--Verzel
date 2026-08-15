@@ -27,6 +27,7 @@ import type { CatalogEvent } from "@/types/catalog";
 const configureSchema = z.object({
   description: z.string().min(10, "Descreva o evento em pelo menos 10 caracteres"),
   venueAddress: z.string().min(1, "Obrigatório"),
+  category: z.string().max(60).optional(),
   sections: z.array(sectionSchema).min(1).max(20),
 });
 
@@ -69,6 +70,7 @@ export default function NewEventPage() {
     defaultValues: {
       description: "",
       venueAddress: "",
+      category: "",
       sections: [{ name: "Pista", priceReais: 50, rowsCount: 5, seatsPerRow: 10 }],
     },
   });
@@ -80,6 +82,7 @@ export default function NewEventPage() {
   function handleSelectEvent(item: CatalogEvent) {
     setSelected(item);
     form.setValue("venueAddress", item.venueAddress);
+    form.setValue("category", item.category ?? "");
   }
 
   async function onSubmit(values: ConfigureFormValues) {
@@ -105,6 +108,7 @@ export default function NewEventPage() {
         venueCity: selected.venueCity || "A definir",
         venueAddress: values.venueAddress,
         externalId: selected.externalId,
+        category: values.category || undefined,
         sections: sectionsToPriceCents(values.sections),
       });
       toast.success("Evento criado como rascunho.");
@@ -163,6 +167,7 @@ export default function NewEventPage() {
                   <p className="text-sm text-muted-foreground">
                     {item.venueCity || "Local a confirmar"}
                     {item.startsAt ? ` • ${formatEventDate(item.startsAt)}` : ""}
+                    {item.category ? ` • ${item.category}` : ""}
                   </p>
                 </div>
               </CardContent>
@@ -212,6 +217,25 @@ export default function NewEventPage() {
                   {selected.venueAddress
                     ? "Preenchido automaticamente com o endereço que a Ticketmaster informou — confira e ajuste se precisar."
                     : "A Ticketmaster não informou o endereço deste local — preencha manualmente."}
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categoria</FormLabel>
+                <FormControl>
+                  <Input placeholder="Music, Sports, Arts & Theatre..." {...field} />
+                </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  {selected.category
+                    ? "Preenchida automaticamente a partir da classificação da Ticketmaster — confira e ajuste se precisar."
+                    : "A Ticketmaster não classificou este evento — preencha manualmente ou deixe em branco."}
                 </p>
                 <FormMessage />
               </FormItem>

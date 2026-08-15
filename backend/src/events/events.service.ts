@@ -70,6 +70,7 @@ export class EventsService {
           externalRaw: dto.externalRaw
             ? (dto.externalRaw as Prisma.InputJsonValue)
             : undefined,
+          category: dto.category,
           organizerId,
           capacity: totalSeats,
           status: EventStatus.DRAFT,
@@ -147,6 +148,46 @@ export class EventsService {
     });
   }
 
+  // Vitrine única e compartilhada entre organizadores — no máximo
+  // MAX_FEATURED_EVENTS eventos com featured=true na plataforma inteira,
+  // não por organizador. Só evento já PUBLISHED pode entrar (destacar um
+  // rascunho na home pública não faz sentido, ele nem aparece lá).
+  async feature(organizerId: string, eventId: string): Promise<Event> {
+    const event = await this.findOwnedEventOrThrow(organizerId, eventId);
+
+    if (event.status !== EventStatus.PUBLISHED) {
+      throw new BadRequestException(
+        'Só é possível destacar eventos já publicados.',
+      );
+    }
+    if (event.featured) {
+      return event;
+    }
+
+    const featuredCount = await this.prisma.event.count({
+      where: { featured: true },
+    });
+    if (featuredCount >= EVENTS_LIMITS.MAX_FEATURED_EVENTS) {
+      throw new BadRequestException(
+        `Limite de ${EVENTS_LIMITS.MAX_FEATURED_EVENTS} eventos em destaque atingido. Remova outro evento dos destaques antes de adicionar este.`,
+      );
+    }
+
+    return this.prisma.event.update({
+      where: { id: eventId },
+      data: { featured: true },
+    });
+  }
+
+  async unfeature(organizerId: string, eventId: string): Promise<Event> {
+    await this.findOwnedEventOrThrow(organizerId, eventId);
+
+    return this.prisma.event.update({
+      where: { id: eventId },
+      data: { featured: false },
+    });
+  }
+
   // Edita descrição/endereço a qualquer momento (informativo, não afeta
   // assentos já vendidos). Setores só podem ser substituídos enquanto o
   // evento nunca teve nenhuma reserva — mesmo uma expirada/recusada/cancelada
@@ -214,15 +255,21 @@ export class EventsService {
             capacity: totalSeats,
             ...(dto.description ? { description: dto.description } : {}),
             ...(dto.venueAddress ? { venueAddress: dto.venueAddress } : {}),
+            ...(dto.category !== undefined ? { category: dto.category } : {}),
           },
         });
       });
-    } else if (dto.description || dto.venueAddress) {
+    } else if (
+      dto.description ||
+      dto.venueAddress ||
+      dto.category !== undefined
+    ) {
       await this.prisma.event.update({
         where: { id: eventId },
         data: {
           ...(dto.description ? { description: dto.description } : {}),
           ...(dto.venueAddress ? { venueAddress: dto.venueAddress } : {}),
+          ...(dto.category !== undefined ? { category: dto.category } : {}),
         },
       });
     }
@@ -405,6 +452,20 @@ export class EventsService {
       page,
       pageSize,
     };
+  }
+
+  // Vitrine "Em destaque" da home pública — sempre no máximo
+  // MAX_FEATURED_EVENTS itens (o limite já é aplicado na escrita, em
+  // feature()), então não precisa de paginação aqui.
+  async findFeatured() {
+    const events = await this.prisma.event.findMany({
+      where: { status: EventStatus.PUBLISHED, featured: true },
+      orderBy: { startsAt: 'asc' },
+      take: EVENTS_LIMITS.MAX_FEATURED_EVENTS,
+      include: { sections: true },
+    });
+
+    return events.map((event) => this.toSummary(event));
   }
 
   // Rota pública: só mostra eventos já publicados, independente de quem
