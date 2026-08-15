@@ -17,6 +17,7 @@ export interface GateValidationResult {
 export interface GateHistoryEventSummary {
   eventId: string;
   eventTitle: string;
+  imageUrl: string | null;
   venueCity: string;
   startsAt: string;
   validatedCount: number;

@@ -319,7 +319,13 @@ describe('GateService', () => {
       });
       expect(prisma.event.findMany).toHaveBeenCalledWith({
         where: { id: { in: [EVENT_ID, OTHER_EVENT_ID] } },
-        select: { id: true, title: true, venueCity: true, startsAt: true },
+        select: {
+          id: true,
+          title: true,
+          imageUrl: true,
+          venueCity: true,
+          startsAt: true,
+        },
       });
     });
 

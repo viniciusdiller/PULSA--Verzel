@@ -28,6 +28,7 @@ export interface GateValidationResult {
 export interface GateHistoryEventSummary {
   eventId: string;
   eventTitle: string;
+  imageUrl: string | null;
   venueCity: string;
   startsAt: Date;
   validatedCount: number;
@@ -175,7 +176,13 @@ export class GateService {
 
     const events = await this.prisma.event.findMany({
       where: { id: { in: grouped.map((g) => g.eventId) } },
-      select: { id: true, title: true, venueCity: true, startsAt: true },
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        venueCity: true,
+        startsAt: true,
+      },
     });
     const eventById = new Map(events.map((e) => [e.id, e]));
 
@@ -186,6 +193,7 @@ export class GateService {
         return {
           eventId: g.eventId,
           eventTitle: event.title,
+          imageUrl: event.imageUrl,
           venueCity: event.venueCity,
           startsAt: event.startsAt,
           validatedCount: g._count._all,
