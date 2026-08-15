@@ -5,7 +5,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Event, EventStatus, Prisma, Section } from '@prisma/client';
+import {
+  Event,
+  EventStatus,
+  Prisma,
+  ReservationStatus,
+  Section,
+  TicketStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -226,23 +233,91 @@ export class EventsService {
     return this.toSummary(updated);
   }
 
-  // Exclusão de verdade (não é só marcar CANCELED) — só permitida se o
-  // evento nunca teve reserva nenhuma. Isso é reforçado pelo próprio banco
-  // (Reservation.event não tem onDelete: Cascade, é RESTRICT por padrão),
-  // mas checar antes dá uma mensagem clara em vez de um erro de FK cru.
-  async remove(organizerId: string, eventId: string): Promise<void> {
+  // Dois caminhos bem diferentes atrás do mesmo botão "Excluir evento":
+  // - Sem nenhuma reserva (nem histórica): exclusão de verdade, tira a
+  //   linha do banco (cascata apaga seções/assentos).
+  // - Com reserva: NÃO apaga nada. Vira "cancelar com estorno" —
+  //   assinatura completamente diferente de uma exclusão, mas o
+  //   organizador só vê um botão porque a intenção dele ("eu não quero
+  //   mais esse evento na plataforma") é a mesma nos dois casos; quem
+  //   decide qual caminho seguir é o histórico de reservas, não o
+  //   organizador.
+  async remove(
+    organizerId: string,
+    eventId: string,
+  ): Promise<{ hardDeleted: boolean; refundedCustomers: number }> {
     await this.findOwnedEventOrThrow(organizerId, eventId);
 
     const reservationsCount = await this.prisma.reservation.count({
       where: { eventId },
     });
-    if (reservationsCount > 0) {
-      throw new ConflictException(
-        'Não é possível excluir: já existem reservas para este evento. Despublique-o em vez disso.',
-      );
+
+    if (reservationsCount === 0) {
+      await this.prisma.event.delete({ where: { id: eventId } });
+      return { hardDeleted: true, refundedCustomers: 0 };
     }
 
-    await this.prisma.event.delete({ where: { id: eventId } });
+    const refundedCustomers = await this.cancelWithRefund(eventId);
+    return { hardDeleted: false, refundedCustomers };
+  }
+
+  // Estorna em saldo da plataforma (User.balanceCents) todo cliente com
+  // reserva PAGA neste evento, invalida os ingressos emitidos, cancela
+  // holds ainda ativos, e marca o evento como CANCELED — nunca apagado,
+  // porque o aviso que o cliente vê no próximo login (ver
+  // EventCancellationNotice) e o histórico em "Meus ingressos" continuam
+  // precisando existir depois disso.
+  private async cancelWithRefund(eventId: string): Promise<number> {
+    const event = await this.prisma.event.findUniqueOrThrow({
+      where: { id: eventId },
+    });
+
+    const paidReservations = await this.prisma.reservation.findMany({
+      where: { eventId, status: ReservationStatus.PAID },
+      include: { ticket: true },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const reservation of paidReservations) {
+        await tx.user.update({
+          where: { id: reservation.customerId },
+          data: { balanceCents: { increment: reservation.totalCents } },
+        });
+        await tx.reservation.update({
+          where: { id: reservation.id },
+          data: { status: ReservationStatus.CANCELED },
+        });
+        if (reservation.ticket) {
+          await tx.ticket.update({
+            where: { id: reservation.ticket.id },
+            data: { status: TicketStatus.VOID },
+          });
+        }
+        await tx.eventCancellationNotice.create({
+          data: {
+            userId: reservation.customerId,
+            eventId,
+            eventTitle: event.title,
+            refundedCents: reservation.totalCents,
+          },
+        });
+      }
+
+      // Holds ainda em aberto (ninguém pagou nada ainda) só precisam ser
+      // liberados — sem estorno, sem aviso, porque nenhum dinheiro trocou
+      // de mãos.
+      await tx.reservation.updateMany({
+        where: { eventId, status: ReservationStatus.HOLDING },
+        data: { status: ReservationStatus.CANCELED },
+      });
+
+      await tx.event.update({
+        where: { id: eventId },
+        data: { status: EventStatus.CANCELED },
+      });
+    });
+
+    return paidReservations.length;
   }
 
   private async findOwnedEventOrThrow(

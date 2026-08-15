@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { EventStatus } from '@prisma/client';
+import { EventStatus, ReservationStatus, TicketStatus } from '@prisma/client';
 import { EventsService } from './events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -65,7 +65,7 @@ describe('EventsService', () => {
       update: jest.Mock;
       delete: jest.Mock;
     };
-    reservation: { count: jest.Mock };
+    reservation: { count: jest.Mock; findMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let tx: {
@@ -77,6 +77,10 @@ describe('EventsService', () => {
     seat: {
       createMany: jest.Mock<Promise<{ count: number }>, [SeatCreateManyArgs]>;
     };
+    user: { update: jest.Mock };
+    reservation: { update: jest.Mock; updateMany: jest.Mock };
+    ticket: { update: jest.Mock };
+    eventCancellationNotice: { create: jest.Mock };
   };
 
   beforeEach(() => {
@@ -89,6 +93,10 @@ describe('EventsService', () => {
       seat: {
         createMany: jest.fn<Promise<{ count: number }>, [SeatCreateManyArgs]>(),
       },
+      user: { update: jest.fn() },
+      reservation: { update: jest.fn(), updateMany: jest.fn() },
+      ticket: { update: jest.fn() },
+      eventCancellationNotice: { create: jest.fn() },
     };
 
     prisma = {
@@ -100,7 +108,7 @@ describe('EventsService', () => {
         update: jest.fn(),
         delete: jest.fn(),
       },
-      reservation: { count: jest.fn() },
+      reservation: { count: jest.fn(), findMany: jest.fn() },
       $transaction: jest.fn(async (arg: unknown) => {
         if (typeof arg === 'function') {
           return (arg as (tx: unknown) => unknown)(tx);
@@ -582,7 +590,7 @@ describe('EventsService', () => {
   });
 
   describe('remove', () => {
-    it('exclui um evento sem nenhuma reserva', async () => {
+    it('exclui de verdade um evento sem nenhuma reserva', async () => {
       prisma.event.findUnique.mockResolvedValue({
         id: 'event-1',
         organizerId: 'organizer-1',
@@ -591,25 +599,104 @@ describe('EventsService', () => {
       prisma.reservation.count.mockResolvedValue(0);
       prisma.event.delete.mockResolvedValue({ id: 'event-1' });
 
-      await service.remove('organizer-1', 'event-1');
+      const result = await service.remove('organizer-1', 'event-1');
 
       expect(prisma.event.delete).toHaveBeenCalledWith({
         where: { id: 'event-1' },
       });
+      expect(result).toEqual({ hardDeleted: true, refundedCustomers: 0 });
     });
 
-    it('rejeita com Conflict quando o evento já tem alguma reserva', async () => {
+    it('cancela com estorno (não exclui) quando o evento tem reservas pagas — credita saldo, invalida ingresso, cria aviso', async () => {
       prisma.event.findUnique.mockResolvedValue({
         id: 'event-1',
         organizerId: 'organizer-1',
+        title: 'Show Cancelado',
         status: EventStatus.PUBLISHED,
       });
       prisma.reservation.count.mockResolvedValue(2);
+      prisma.event.findUniqueOrThrow.mockResolvedValue({
+        id: 'event-1',
+        title: 'Show Cancelado',
+      });
+      prisma.reservation.findMany.mockResolvedValue([
+        {
+          id: 'res-1',
+          customerId: 'cliente-1',
+          totalCents: 15000,
+          ticket: { id: 'ticket-1' },
+        },
+        {
+          id: 'res-2',
+          customerId: 'cliente-2',
+          totalCents: 8000,
+          ticket: null,
+        },
+      ]);
 
-      await expect(service.remove('organizer-1', 'event-1')).rejects.toThrow(
-        ConflictException,
-      );
+      const result = await service.remove('organizer-1', 'event-1');
+
       expect(prisma.event.delete).not.toHaveBeenCalled();
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: 'cliente-1' },
+        data: { balanceCents: { increment: 15000 } },
+      });
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: 'cliente-2' },
+        data: { balanceCents: { increment: 8000 } },
+      });
+      expect(tx.reservation.update).toHaveBeenCalledWith({
+        where: { id: 'res-1' },
+        data: { status: ReservationStatus.CANCELED },
+      });
+      expect(tx.ticket.update).toHaveBeenCalledWith({
+        where: { id: 'ticket-1' },
+        data: { status: TicketStatus.VOID },
+      });
+      // res-2 não tinha ticket emitido — não deve tentar invalidar nada pra ela
+      expect(tx.ticket.update).toHaveBeenCalledTimes(1);
+      expect(tx.eventCancellationNotice.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'cliente-1',
+          eventId: 'event-1',
+          eventTitle: 'Show Cancelado',
+          refundedCents: 15000,
+        },
+      });
+      expect(tx.reservation.updateMany).toHaveBeenCalledWith({
+        where: { eventId: 'event-1', status: ReservationStatus.HOLDING },
+        data: { status: ReservationStatus.CANCELED },
+      });
+      expect(tx.event.update).toHaveBeenCalledWith({
+        where: { id: 'event-1' },
+        data: { status: EventStatus.CANCELED },
+      });
+      expect(result).toEqual({ hardDeleted: false, refundedCustomers: 2 });
+    });
+
+    it('cancela sem estornar nada quando as reservas existentes nunca foram pagas (ex. só expiradas)', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        title: 'Evento sem vendas',
+        status: EventStatus.PUBLISHED,
+      });
+      prisma.reservation.count.mockResolvedValue(1);
+      prisma.event.findUniqueOrThrow.mockResolvedValue({
+        id: 'event-1',
+        title: 'Evento sem vendas',
+      });
+      prisma.reservation.findMany.mockResolvedValue([]);
+
+      const result = await service.remove('organizer-1', 'event-1');
+
+      expect(tx.user.update).not.toHaveBeenCalled();
+      expect(tx.eventCancellationNotice.create).not.toHaveBeenCalled();
+      expect(tx.event.update).toHaveBeenCalledWith({
+        where: { id: 'event-1' },
+        data: { status: EventStatus.CANCELED },
+      });
+      expect(result).toEqual({ hardDeleted: false, refundedCustomers: 0 });
     });
 
     it('rejeita com NotFound quando o evento não existe', async () => {

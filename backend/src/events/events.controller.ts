@@ -82,9 +82,10 @@ export class EventsController {
   @Delete(':id')
   @Roles(Role.ORGANIZER)
   @ApiBearerAuth()
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Exclui um evento sem nenhuma reserva (só o organizador dono)',
+    summary:
+      'Exclui um evento (sem reserva) ou cancela com estorno em saldo pros clientes (com reserva) — só o organizador dono',
   })
   remove(
     @CurrentUser() user: AuthenticatedUser,
