@@ -37,7 +37,24 @@ export function QrScanner({
     const startAttempt = scanner
       .start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 240 },
+        {
+          fps: 10,
+          // Função em vez de número fixo: antes usávamos qrbox:240, que
+          // ficava bem menor que o container real (que cresce até
+          // max-w-xs = 320px) — a lib só decodifica DENTRO desse
+          // quadro, então a área de leitura de verdade era um
+          // retângulo pequeno no centro, sem bater com a moldura em L
+          // decorativa (maior) desenhada por cima em gate/page.tsx.
+          // Aqui o quadro de leitura passa a ser calculado a partir do
+          // viewfinder real, com o mesmo respiro (16px cada lado) da
+          // moldura decorativa — os dois ficam alinhados, e a área
+          // funcional de leitura fica bem maior (mais fácil de
+          // enquadrar o QR e ler de verdade).
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const size = Math.max(180, Math.min(viewfinderWidth, viewfinderHeight) - 32);
+            return { width: size, height: size };
+          },
+        },
         (decodedText) => onDecodeRef.current(decodedText),
         () => {
           // erro de "não achou QR neste frame" — esperado a cada frame sem
