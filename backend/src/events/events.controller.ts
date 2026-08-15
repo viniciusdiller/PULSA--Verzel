@@ -80,6 +80,33 @@ export class EventsController {
     return this.eventsService.update(user.id, id, dto);
   }
 
+  @Patch(':id/feature')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Adiciona um evento publicado aos "Em destaque" da home pública (máx. 4, entre todos os organizadores)',
+  })
+  feature(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.feature(user.id, id);
+  }
+
+  @Patch(':id/unfeature')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Remove um evento dos "Em destaque" da home pública',
+  })
+  unfeature(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.unfeature(user.id, id);
+  }
+
   @Delete(':id')
   @Roles(Role.ORGANIZER)
   @ApiBearerAuth()
@@ -117,6 +144,15 @@ export class EventsController {
   })
   findPublished(@Query() query: EventListQueryDto) {
     return this.eventsService.findPublished(query);
+  }
+
+  @Public()
+  @Get('featured')
+  @ApiOperation({
+    summary: 'Lista os eventos em destaque na home pública (no máx. 4)',
+  })
+  findFeatured() {
+    return this.eventsService.findFeatured();
   }
 
   @Get('organizer/mine')

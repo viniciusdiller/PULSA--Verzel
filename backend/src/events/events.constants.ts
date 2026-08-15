@@ -8,4 +8,8 @@ export const EVENTS_LIMITS = {
   // Teto prático para o mapa de assentos continuar renderizável/interativo
   // numa demo — não é uma limitação técnica do banco.
   MAX_EVENT_CAPACITY: 300,
+  // Quantos eventos podem estar em destaque na home pública ao mesmo
+  // tempo, somando todos os organizadores — não é por organizador,
+  // porque a seção "Em destaque" é uma vitrine única e compartilhada.
+  MAX_FEATURED_EVENTS: 4,
 } as const;
