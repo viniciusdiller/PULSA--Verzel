@@ -1,10 +1,11 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { runThemeTransition } from "@/lib/theme-transition";
 
 const noopSubscribe = () => () => {};
 
@@ -24,6 +25,7 @@ function useIsClient() {
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useIsClient();
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   if (!mounted) {
     return <div className="size-8" aria-hidden />;
@@ -31,13 +33,24 @@ export function ThemeToggle() {
 
   const isDark = resolvedTheme === "dark";
 
+  function handleToggle() {
+    const next = isDark ? "light" : "dark";
+    const rect = buttonRef.current?.getBoundingClientRect();
+    const origin = rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
+    runThemeTransition(origin, () => setTheme(next));
+  }
+
   return (
     <Button
+      ref={buttonRef}
       type="button"
       variant="ghost"
       size="icon"
       aria-label={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={handleToggle}
       className="overflow-hidden rounded-full"
     >
       <AnimatePresence mode="wait" initial={false}>

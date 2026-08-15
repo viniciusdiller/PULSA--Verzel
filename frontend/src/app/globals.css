@@ -199,3 +199,19 @@
     @apply font-sans;
   }
 }
+
+/* Reveal em círculo ao trocar de tema (theme-toggle.tsx +
+   lib/theme-transition.ts) — desliga o crossfade padrão da View
+   Transitions API e deixa o conteúdo novo sempre por cima, crescendo a
+   partir do clique, em vez do "close then open" nativo (que pisca). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+}
