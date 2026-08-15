@@ -15,10 +15,14 @@ import { cn } from "@/lib/utils";
 export function SiteHeader() {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
+  // Portaria não acumula/gasta saldo (isso é coisa de CUSTOMER que teve
+  // um evento cancelado) — mostrar "Saldo: R$ 0,00" pra quem só bate
+  // cartão de ingresso na entrada não ajuda em nada, só ocupa espaço.
+  const showBalance = user?.role !== "GATE_STAFF";
   // Saldo em tempo quase real: recarrega ao focar a aba, então um cliente
   // que estava com o app aberto quando um evento foi cancelado vê o saldo
   // novo assim que volta pra essa aba, sem precisar recarregar a página.
-  const { data: profile } = useProfileQuery(!!user);
+  const { data: profile } = useProfileQuery(!!user && showBalance);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -82,15 +86,17 @@ export function SiteHeader() {
                 <span className="text-sm text-foreground">{user.name}</span>
                 <Badge variant="outline">{roleLabel(user.role)}</Badge>
               </Link>
-              <Link
-                href="/profile"
-                className="rounded-full transition-transform hover:cursor-pointer hover:scale-105"
-                aria-label="Saldo — ver perfil"
-              >
-                <Badge variant="violet">
-                  Saldo: {formatCentsToBRL(profile?.balanceCents ?? 0)}
-                </Badge>
-              </Link>
+              {showBalance && (
+                <Link
+                  href="/profile"
+                  className="rounded-full transition-transform hover:cursor-pointer hover:scale-105"
+                  aria-label="Saldo — ver perfil"
+                >
+                  <Badge variant="violet">
+                    Saldo: {formatCentsToBRL(profile?.balanceCents ?? 0)}
+                  </Badge>
+                </Link>
+              )}
               <ThemeToggle />
             </>
           ) : (
