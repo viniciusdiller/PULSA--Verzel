@@ -9,7 +9,7 @@ import { z } from "zod";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 
-import { useMyEventsQuery, useUpdateEventMutation } from "@/hooks/use-organizer-events";
+import { useMyEventQuery, useUpdateEventMutation } from "@/hooks/use-organizer-events";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,8 +35,7 @@ function sectionsEqual(a: SectionFormValues[], b: SectionFormValues[]) {
 
 export default function EditEventPage(props: PageProps<"/organizer/[eventId]/edit">) {
   const { eventId } = use(props.params);
-  const { data: events, isLoading } = useMyEventsQuery();
-  const event = events?.find((e) => e.id === eventId);
+  const { data: event, isLoading } = useMyEventQuery(eventId);
 
   if (isLoading) {
     return (

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
 import {
-  useMyEventsQuery,
+  useMyEventQuery,
   usePublishEventMutation,
   useUnpublishEventMutation,
   useDeleteEventMutation,
@@ -28,11 +28,10 @@ import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
 export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[eventId]">) {
   const { eventId } = use(props.params);
   const router = useRouter();
-  const { data: events, isLoading } = useMyEventsQuery();
+  const { data: event, isLoading } = useMyEventQuery(eventId);
   const publishMutation = usePublishEventMutation();
   const unpublishMutation = useUnpublishEventMutation();
   const deleteMutation = useDeleteEventMutation();
-  const event = events?.find((e) => e.id === eventId);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   function extractErrorMessage(error: unknown): string | undefined {

@@ -1,14 +1,39 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { EventSummary } from "@/types/event";
+import type { EventListResponse, EventStatus, EventSummary } from "@/types/event";
 
-export function useMyEventsQuery() {
+export interface MyEventsFilters {
+  status?: EventStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+export function useMyEventsQuery(filters: MyEventsFilters = {}) {
+  const { status, page = 1, pageSize = 10 } = filters;
   return useQuery({
-    queryKey: ["organizer", "events"],
+    queryKey: ["organizer", "events", { status, page, pageSize }],
     queryFn: async () => {
-      const { data } = await apiClient.get<EventSummary[]>("/events/organizer/mine");
+      const { data } = await apiClient.get<EventListResponse>("/events/organizer/mine", {
+        params: { ...(status ? { status } : {}), page, pageSize },
+      });
       return data;
     },
+    placeholderData: keepPreviousData,
+  });
+}
+
+// Usado pelas telas de detalhe/edição — pega só o evento que interessa,
+// em vez de puxar a lista paginada inteira e procurar o id nela (o que
+// quebraria assim que o organizador tivesse mais eventos do que cabem
+// numa página).
+export function useMyEventQuery(eventId: string) {
+  return useQuery({
+    queryKey: ["organizer", "events", "detail", eventId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<EventSummary>(`/events/organizer/mine/${eventId}`);
+      return data;
+    },
+    enabled: !!eventId,
   });
 }
 
