@@ -38,7 +38,7 @@ export function GateHistoryEventSection({ event }: { event: GateHistoryEventSumm
             {event.venueCity} • {formatEventDateTime(event.startsAt)}
           </p>
         </div>
-        <Badge variant="violet" className="shrink-0">
+        <Badge variant="pink" className="shrink-0">
           {event.validatedCount} validado{event.validatedCount === 1 ? "" : "s"}
         </Badge>
       </div>

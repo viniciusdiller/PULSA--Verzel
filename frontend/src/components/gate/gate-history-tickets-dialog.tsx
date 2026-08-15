@@ -39,13 +39,16 @@ export function GateHistoryTicketsDialog({ event }: { event: GateHistoryEventSum
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="secondary" size="sm">
           Ver todos ({event.validatedCount})
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{event.eventTitle}</DialogTitle>
+        {/* Sangra até a borda do card (-mx-4 -mt-4) e reserva espaço à
+            direita (pr-12) pro X de fechar, que fica absolute por cima —
+            sem isso o título comprido invadia embaixo do botão de fechar. */}
+        <DialogHeader className="-mx-4 -mt-4 gap-1 rounded-t-xl border-b border-border/60 bg-muted/40 px-4 py-4 pr-12">
+          <DialogTitle className="truncate">{event.eventTitle}</DialogTitle>
           <DialogDescription>
             Todos os ingressos que você validou neste evento.
           </DialogDescription>

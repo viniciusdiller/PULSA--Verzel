@@ -54,6 +54,7 @@
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --color-category-party: var(--category-party);
+  --color-category-party-foreground: var(--category-party-foreground);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -131,9 +132,11 @@
   --warning-foreground: #14121c;
   --info: #2d6cff;
   --info-foreground: #ffffff;
-  /* Categoria "Festas" do guia — token reservado, ainda sem uso: o
-     produto não tem campo de categoria de evento hoje (ver plano). */
+  /* Categoria "Festas" do guia — reaproveitado como cor de destaque rosa
+     (ex. badge de "N validados" na portaria) fora do contexto de
+     categoria de evento em si. */
   --category-party: #ff2fb0;
+  --category-party-foreground: #ffffff;
 }
 
 .dark {
@@ -186,6 +189,7 @@
   --info: #5b8dff;
   --info-foreground: #0c0b14;
   --category-party: #ff2fb0;
+  --category-party-foreground: #ffffff;
 }
 
 @layer base {

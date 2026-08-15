@@ -28,6 +28,7 @@ const badgeVariants = cva(
         warning: "bg-warning text-warning-foreground [a]:hover:bg-warning/80",
         info: "bg-info text-info-foreground [a]:hover:bg-info/80",
         violet: "bg-violet text-violet-foreground [a]:hover:bg-violet/80",
+        pink: "bg-category-party text-category-party-foreground [a]:hover:bg-category-party/80",
       },
     },
     defaultVariants: {
