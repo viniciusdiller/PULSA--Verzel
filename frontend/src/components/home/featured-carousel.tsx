@@ -58,7 +58,9 @@ export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
         grabCursor
         centeredSlides
         rewind={canAutoplay}
-        autoplay={canAutoplay ? { delay: 4500, disableOnInteraction: false } : false}
+        autoplay={
+          canAutoplay ? { delay: 3000, disableOnInteraction: false } : false
+        }
         slidesPerView={1.15}
         breakpoints={{
           640: { slidesPerView: 2.2 },
