@@ -29,6 +29,7 @@ describe('AuthService', () => {
     role: Role.ORGANIZER,
     passwordHash: 'hashed-password',
     createdAt: new Date('2026-01-01T00:00:00Z'),
+    balanceCents: 0,
   };
 
   beforeEach(() => {
@@ -169,6 +170,7 @@ describe('AuthService', () => {
         name: dbUser.name,
         role: dbUser.role,
         createdAt: dbUser.createdAt,
+        balanceCents: dbUser.balanceCents,
         statsCount: 3,
         statsLabel: 'Eventos publicados',
       });
