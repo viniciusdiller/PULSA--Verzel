@@ -4,15 +4,21 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfileQuery } from "@/hooks/use-profile";
 import { roleHomePath, roleLabel, roleNavLabel } from "@/lib/auth";
+import { formatCentsToBRL } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading } = useAuth();
   const pathname = usePathname();
+  // Saldo em tempo quase real: recarrega ao focar a aba, então um cliente
+  // que estava com o app aberto quando um evento foi cancelado vê o saldo
+  // novo assim que volta pra essa aba, sem precisar recarregar a página.
+  const { data: profile } = useProfileQuery(!!user);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -47,9 +53,11 @@ export function SiteHeader() {
 
         {/* No mobile a navegação principal vive na barra inferior
             (MobileBottomNav) — o header fica com marca + tema em todas as
-            larguras, e o "Sair" segue aqui isolado (nunca dentro da barra
-            de navegação, pra não ficar colado a um item real e disparar
-            logout sem querer). */}
+            larguras. "Sair" não mora mais aqui: fica isolado na página de
+            perfil, e o espaço que ele ocupava virou o saldo da plataforma
+            (visível pra qualquer papel — só CUSTOMER acumula saldo de
+            estorno, mas mostrar R$0,00 pros outros não confunde ninguém e
+            mantém o header consistente entre papéis). */}
         <nav className="flex items-center gap-2">
           {isLoading ? null : user ? (
             <>
@@ -74,9 +82,15 @@ export function SiteHeader() {
                 <span className="text-sm text-foreground">{user.name}</span>
                 <Badge variant="outline">{roleLabel(user.role)}</Badge>
               </Link>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                Sair
-              </Button>
+              <Link
+                href="/profile"
+                className="rounded-full transition-transform hover:cursor-pointer hover:scale-105"
+                aria-label="Saldo — ver perfil"
+              >
+                <Badge variant="success">
+                  Saldo: {formatCentsToBRL(profile?.balanceCents ?? 0)}
+                </Badge>
+              </Link>
               <ThemeToggle />
             </>
           ) : (

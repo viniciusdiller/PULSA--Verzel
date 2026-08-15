@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type { Profile } from "@/types/profile";
 
-export function useProfileQuery() {
+export function useProfileQuery(enabled = true) {
   return useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
       const { data } = await apiClient.get<Profile>("/auth/me");
       return data;
     },
+    enabled,
   });
 }
 
