@@ -80,6 +80,14 @@ export default function EventsListPage() {
         <h1 className="font-heading text-4xl font-bold sm:text-5xl">
           Seu próximo show começa aqui
         </h1>
+      </div>
+
+      {isBrowsingUnfiltered && featuredEvents && featuredEvents.length > 0 && (
+        <FeaturedCarousel events={featuredEvents} />
+      )}
+      {heroEvent && <HeroEvent event={heroEvent} />}
+
+      <div className="space-y-3">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -102,11 +110,6 @@ export default function EventsListPage() {
           }}
         />
       </div>
-
-      {isBrowsingUnfiltered && featuredEvents && featuredEvents.length > 0 && (
-        <FeaturedCarousel events={featuredEvents} />
-      )}
-      {heroEvent && <HeroEvent event={heroEvent} />}
 
       <div>
         <h2 className="font-heading mb-6 text-2xl font-bold">Eventos em cartaz</h2>
