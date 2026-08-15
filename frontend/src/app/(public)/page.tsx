@@ -2,31 +2,35 @@
 
 import { useMemo, useState } from "react";
 import { useEventsQuery } from "@/hooks/use-events";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { EventCard } from "@/components/events/event-card";
 import { HeroEvent } from "@/components/home/hero-event";
 import { CityChips } from "@/components/home/city-chips";
 import { TrustSection } from "@/components/home/trust-section";
 import { CtaBand } from "@/components/home/cta-band";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function EventsListPage() {
   const [search, setSearch] = useState("");
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  // O campo de texto continua instantâneo (`search`), só a busca de
+  // verdade espera uma pausa na digitação — evita 1 requisição por tecla.
+  const debouncedSearch = useDebouncedValue(search, 450);
 
   // Duas buscas: uma só com o texto (fonte do hero e das cidades reais
   // disponíveis, pra não sumir com as outras opções de cidade quando uma
   // já está selecionada) e outra com texto+cidade (a grade de fato).
-  const { data: allData, isLoading: allLoading } = useEventsQuery(search);
+  const { data: allData, isLoading: allLoading } = useEventsQuery(debouncedSearch);
   const { data: filteredData, isLoading: filteredLoading, isError } = useEventsQuery(
-    search,
+    debouncedSearch,
     selectedCity ?? undefined,
   );
 
   const heroEvent = useMemo(() => {
-    if (search || selectedCity) return null;
+    if (debouncedSearch || selectedCity) return null;
     return allData?.items[0] ?? null;
-  }, [allData, search, selectedCity]);
+  }, [allData, debouncedSearch, selectedCity]);
 
   const isLoading = allLoading || filteredLoading;
 
@@ -61,11 +65,7 @@ export default function EventsListPage() {
         <h2 className="font-heading mb-6 text-2xl font-bold">Eventos em cartaz</h2>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[3/4] w-full" />
-            ))}
-          </div>
+          <PageLoader label="Carregando eventos..." />
         ) : isError ? (
           <p className="text-muted-foreground">
             Não foi possível carregar os eventos agora. Tente novamente em instantes.

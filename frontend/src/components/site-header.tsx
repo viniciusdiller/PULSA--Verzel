@@ -64,10 +64,16 @@ export function SiteHeader() {
               >
                 {roleNavLabel(user.role)}
               </Link>
-              <div className="mx-1 hidden items-center gap-2 sm:flex">
+              <Link
+                href="/profile"
+                className={cn(
+                  "mx-1 hidden items-center gap-2 rounded-full px-2 py-1 transition-colors hover:cursor-pointer hover:bg-muted sm:flex",
+                  pathname === "/profile" ? "bg-muted" : "",
+                )}
+              >
                 <span className="text-sm text-foreground">{user.name}</span>
                 <Badge variant="outline">{roleLabel(user.role)}</Badge>
-              </div>
+              </Link>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Sair
               </Button>

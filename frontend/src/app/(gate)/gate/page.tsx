@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatEventDateTime } from "@/lib/format";
 import type { GateValidationResult } from "@/types/gate";
@@ -53,11 +53,7 @@ export default function GatePage() {
         <h1 className="font-heading mb-8 text-3xl">Qual evento você está checando?</h1>
 
         {eventsLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
+          <PageLoader label="Carregando eventos..." />
         ) : eventsData && eventsData.items.length > 0 ? (
           <div className="space-y-3">
             {eventsData.items.map((event) => (
