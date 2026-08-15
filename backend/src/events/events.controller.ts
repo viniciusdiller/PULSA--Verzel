@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -12,6 +15,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { EventListQueryDto } from './dto/event-list-query.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -44,6 +48,49 @@ export class EventsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.eventsService.publish(user.id, id);
+  }
+
+  @Patch(':id/unpublish')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Despublica um evento (volta a rascunho, some da listagem pública)',
+  })
+  unpublish(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.unpublish(user.id, id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Edita descrição/endereço/setores de um evento (só o organizador dono)',
+  })
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateEventDto,
+  ) {
+    return this.eventsService.update(user.id, id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Exclui um evento sem nenhuma reserva (só o organizador dono)',
+  })
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.remove(user.id, id);
   }
 
   @Public()

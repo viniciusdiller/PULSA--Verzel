@@ -58,3 +58,50 @@ export function usePublishEventMutation() {
     },
   });
 }
+
+export function useUnpublishEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      const { data } = await apiClient.patch<EventSummary>(`/events/${eventId}/unpublish`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["organizer", "events"] });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export interface UpdateEventInput {
+  description?: string;
+  venueAddress?: string;
+  sections?: CreateSectionInput[];
+}
+
+export function useUpdateEventMutation(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateEventInput) => {
+      const { data } = await apiClient.patch<EventSummary>(`/events/${eventId}`, input);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["organizer", "events"] });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useDeleteEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      await apiClient.delete(`/events/${eventId}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["organizer", "events"] });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}

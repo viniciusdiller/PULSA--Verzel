@@ -1,30 +1,72 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
-import { useMyEventsQuery, usePublishEventMutation } from "@/hooks/use-organizer-events";
+import {
+  useMyEventsQuery,
+  usePublishEventMutation,
+  useUnpublishEventMutation,
+  useDeleteEventMutation,
+} from "@/hooks/use-organizer-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
 import { PageLoader } from "@/components/ui/page-loader";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
 
 export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[eventId]">) {
   const { eventId } = use(props.params);
+  const router = useRouter();
   const { data: events, isLoading } = useMyEventsQuery();
   const publishMutation = usePublishEventMutation();
+  const unpublishMutation = useUnpublishEventMutation();
+  const deleteMutation = useDeleteEventMutation();
   const event = events?.find((e) => e.id === eventId);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  function extractErrorMessage(error: unknown): string | undefined {
+    return isAxiosError(error)
+      ? (error.response?.data as { message?: string } | undefined)?.message
+      : undefined;
+  }
 
   async function handlePublish() {
     try {
       await publishMutation.mutateAsync(eventId);
       toast.success("Evento publicado.");
     } catch (error) {
-      const message = isAxiosError(error)
-        ? (error.response?.data as { message?: string } | undefined)?.message
-        : undefined;
-      toast.error(message ?? "Não foi possível publicar o evento.");
+      toast.error(extractErrorMessage(error) ?? "Não foi possível publicar o evento.");
+    }
+  }
+
+  async function handleUnpublish() {
+    try {
+      await unpublishMutation.mutateAsync(eventId);
+      toast.success("Evento despublicado — não aparece mais na listagem pública.");
+    } catch (error) {
+      toast.error(extractErrorMessage(error) ?? "Não foi possível despublicar o evento.");
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteMutation.mutateAsync(eventId);
+      toast.success("Evento excluído.");
+      router.push("/organizer");
+    } catch (error) {
+      setDeleteDialogOpen(false);
+      toast.error(extractErrorMessage(error) ?? "Não foi possível excluir o evento.");
     }
   }
 
@@ -80,16 +122,83 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
         ))}
       </div>
 
-      {event.status === "DRAFT" && (
-        <Button size="lg" className="mt-8" disabled={publishMutation.isPending} onClick={handlePublish}>
-          {publishMutation.isPending ? "Publicando..." : "Publicar evento"}
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        {event.status === "DRAFT" && (
+          <Button disabled={publishMutation.isPending} onClick={handlePublish}>
+            {publishMutation.isPending ? (
+              <>
+                <LoaderSignalBars size="sm" className="mr-1.5" />
+                Publicando...
+              </>
+            ) : (
+              "Publicar evento"
+            )}
+          </Button>
+        )}
+        {event.status === "PUBLISHED" && (
+          <>
+            <Button asChild variant="outline">
+              <Link href={`/events/${event.id}`}>Ver página pública</Link>
+            </Button>
+            <Button
+              variant="outline"
+              disabled={unpublishMutation.isPending}
+              onClick={handleUnpublish}
+            >
+              {unpublishMutation.isPending ? (
+                <>
+                  <LoaderSignalBars size="sm" className="mr-1.5" />
+                  Despublicando...
+                </>
+              ) : (
+                "Despublicar"
+              )}
+            </Button>
+          </>
+        )}
+        <Button asChild variant="outline">
+          <Link href={`/organizer/${event.id}/edit`}>Editar</Link>
         </Button>
-      )}
-      {event.status === "PUBLISHED" && (
-        <Button asChild size="lg" variant="outline" className="mt-8">
-          <Link href={`/events/${event.id}`}>Ver página pública</Link>
+        <Button
+          variant="ghost"
+          className="text-destructive hover:text-destructive"
+          onClick={() => setDeleteDialogOpen(true)}
+        >
+          Excluir evento
         </Button>
-      )}
+      </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir &quot;{event.title}&quot;?</DialogTitle>
+            <DialogDescription>
+              Isso apaga o evento e todos os seus setores/assentos permanentemente — não dá pra
+              desfazer. Só funciona se este evento ainda não tiver nenhuma reserva (nem expirada
+              ou cancelada); se já tiver, despublique-o em vez de excluir.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={handleDelete}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <LoaderSignalBars size="sm" className="mr-1.5" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir permanentemente"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

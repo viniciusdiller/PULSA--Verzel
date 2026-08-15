@@ -63,12 +63,17 @@ describe('EventsService', () => {
       findMany: jest.Mock<Promise<unknown[]>, [EventFindManyArgs]>;
       count: jest.Mock;
       update: jest.Mock;
+      delete: jest.Mock;
     };
+    reservation: { count: jest.Mock };
     $transaction: jest.Mock;
   };
   let tx: {
-    event: { create: jest.Mock<Promise<{ id: string }>, [EventCreateArgs]> };
-    section: { create: jest.Mock };
+    event: {
+      create: jest.Mock<Promise<{ id: string }>, [EventCreateArgs]>;
+      update: jest.Mock;
+    };
+    section: { create: jest.Mock; deleteMany: jest.Mock };
     seat: {
       createMany: jest.Mock<Promise<{ count: number }>, [SeatCreateManyArgs]>;
     };
@@ -76,8 +81,11 @@ describe('EventsService', () => {
 
   beforeEach(() => {
     tx = {
-      event: { create: jest.fn<Promise<{ id: string }>, [EventCreateArgs]>() },
-      section: { create: jest.fn() },
+      event: {
+        create: jest.fn<Promise<{ id: string }>, [EventCreateArgs]>(),
+        update: jest.fn(),
+      },
+      section: { create: jest.fn(), deleteMany: jest.fn() },
       seat: {
         createMany: jest.fn<Promise<{ count: number }>, [SeatCreateManyArgs]>(),
       },
@@ -90,7 +98,9 @@ describe('EventsService', () => {
         findMany: jest.fn<Promise<unknown[]>, [EventFindManyArgs]>(),
         count: jest.fn(),
         update: jest.fn(),
+        delete: jest.fn(),
       },
+      reservation: { count: jest.fn() },
       $transaction: jest.fn(async (arg: unknown) => {
         if (typeof arg === 'function') {
           return (arg as (tx: unknown) => unknown)(tx);
@@ -390,6 +400,237 @@ describe('EventsService', () => {
       expect(prisma.event.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ skip: 0, take: 20 }),
       );
+    });
+  });
+
+  describe('unpublish', () => {
+    it('despublica um evento publicado pertencente ao organizador', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.PUBLISHED,
+      });
+      prisma.event.update.mockResolvedValue({
+        id: 'event-1',
+        status: EventStatus.DRAFT,
+      });
+
+      const result = await service.unpublish('organizer-1', 'event-1');
+
+      expect(prisma.event.update).toHaveBeenCalledWith({
+        where: { id: 'event-1' },
+        data: { status: EventStatus.DRAFT },
+      });
+      expect(result.status).toBe(EventStatus.DRAFT);
+    });
+
+    it('rejeita com NotFound quando o evento não existe', async () => {
+      prisma.event.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.unpublish('organizer-1', 'evento-inexistente'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejeita com Forbidden quando quem despublica não é o organizador dono', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'outro-organizador',
+        status: EventStatus.PUBLISHED,
+      });
+
+      await expect(service.unpublish('organizer-1', 'event-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.event.update).not.toHaveBeenCalled();
+    });
+
+    it.each([EventStatus.DRAFT, EventStatus.CANCELED])(
+      'rejeita despublicar um evento que já está %s',
+      async (status) => {
+        prisma.event.findUnique.mockResolvedValue({
+          id: 'event-1',
+          organizerId: 'organizer-1',
+          status,
+        });
+
+        await expect(
+          service.unpublish('organizer-1', 'event-1'),
+        ).rejects.toThrow(BadRequestException);
+        expect(prisma.event.update).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('update', () => {
+    it('atualiza só descrição/endereço sem mexer nos setores quando `sections` não é enviado', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.DRAFT,
+      });
+      prisma.event.findUniqueOrThrow.mockResolvedValue({
+        id: 'event-1',
+        description: 'Nova descrição',
+        sections: [],
+      });
+
+      await service.update('organizer-1', 'event-1', {
+        description: 'Nova descrição',
+      });
+
+      expect(prisma.event.update).toHaveBeenCalledWith({
+        where: { id: 'event-1' },
+        data: { description: 'Nova descrição' },
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.reservation.count).not.toHaveBeenCalled();
+    });
+
+    it('substitui os setores (apaga os antigos e recria) quando o evento nunca teve reserva', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.DRAFT,
+      });
+      prisma.reservation.count.mockResolvedValue(0);
+      tx.section.create.mockResolvedValue({ id: 'section-novo' });
+      tx.seat.createMany.mockResolvedValue({ count: 4 });
+      prisma.event.findUniqueOrThrow.mockResolvedValue({
+        id: 'event-1',
+        capacity: 4,
+        sections: [{ id: 'section-novo', priceCents: 8000 }],
+      });
+
+      const result = await service.update('organizer-1', 'event-1', {
+        sections: [
+          {
+            name: 'Setor Novo',
+            priceCents: 8000,
+            rowsCount: 2,
+            seatsPerRow: 2,
+          },
+        ],
+      });
+
+      expect(tx.section.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'event-1' },
+      });
+      const seatsArg = tx.seat.createMany.mock.calls[0][0].data;
+      expect(seatsArg).toHaveLength(4);
+      expect(tx.event.update).toHaveBeenCalledWith({
+        where: { id: 'event-1' },
+        data: { capacity: 4 },
+      });
+      expect(result.fromPriceCents).toBe(8000);
+    });
+
+    it('rejeita alterar setores quando o evento já teve alguma reserva (mesmo expirada/cancelada)', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.DRAFT,
+      });
+      prisma.reservation.count.mockResolvedValue(1);
+
+      await expect(
+        service.update('organizer-1', 'event-1', {
+          sections: [
+            { name: 'X', priceCents: 1000, rowsCount: 1, seatsPerRow: 1 },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejeita quando a capacidade total dos novos setores excede o máximo', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.DRAFT,
+      });
+      prisma.reservation.count.mockResolvedValue(0);
+
+      await expect(
+        service.update('organizer-1', 'event-1', {
+          sections: [
+            {
+              name: 'Gigante',
+              priceCents: 1000,
+              rowsCount: EVENTS_LIMITS.MAX_ROWS,
+              seatsPerRow: EVENTS_LIMITS.MAX_SEATS_PER_ROW,
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejeita com Forbidden quando quem edita não é o organizador dono', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'outro-organizador',
+        status: EventStatus.DRAFT,
+      });
+
+      await expect(
+        service.update('organizer-1', 'event-1', {
+          description: 'x'.repeat(20),
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('remove', () => {
+    it('exclui um evento sem nenhuma reserva', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.DRAFT,
+      });
+      prisma.reservation.count.mockResolvedValue(0);
+      prisma.event.delete.mockResolvedValue({ id: 'event-1' });
+
+      await service.remove('organizer-1', 'event-1');
+
+      expect(prisma.event.delete).toHaveBeenCalledWith({
+        where: { id: 'event-1' },
+      });
+    });
+
+    it('rejeita com Conflict quando o evento já tem alguma reserva', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.PUBLISHED,
+      });
+      prisma.reservation.count.mockResolvedValue(2);
+
+      await expect(service.remove('organizer-1', 'event-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.event.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejeita com NotFound quando o evento não existe', async () => {
+      prisma.event.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.remove('organizer-1', 'evento-inexistente'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejeita com Forbidden quando quem exclui não é o organizador dono', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        organizerId: 'outro-organizador',
+        status: EventStatus.DRAFT,
+      });
+
+      await expect(service.remove('organizer-1', 'event-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.reservation.count).not.toHaveBeenCalled();
     });
   });
 });

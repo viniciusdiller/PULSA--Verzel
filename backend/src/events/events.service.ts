@@ -8,6 +8,7 @@ import {
 import { Event, EventStatus, Prisma, Section } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { EventListQueryDto } from './dto/event-list-query.dto';
 import { EVENTS_LIMITS } from './events.constants';
 import { generateSeatsForSection } from './utils/seat-label.util';
@@ -105,18 +106,8 @@ export class EventsService {
   }
 
   async publish(organizerId: string, eventId: string): Promise<Event> {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-    });
+    const event = await this.findOwnedEventOrThrow(organizerId, eventId);
 
-    if (!event) {
-      throw new NotFoundException('Evento não encontrado.');
-    }
-    if (event.organizerId !== organizerId) {
-      throw new ForbiddenException(
-        'Você não tem permissão para publicar este evento.',
-      );
-    }
     if (event.status !== EventStatus.DRAFT) {
       throw new BadRequestException(
         `Só é possível publicar eventos em rascunho (status atual: ${event.status}).`,
@@ -127,6 +118,150 @@ export class EventsService {
       where: { id: eventId },
       data: { status: EventStatus.PUBLISHED },
     });
+  }
+
+  // Volta um evento publicado pra rascunho — some da listagem pública
+  // (findPublished/findPublishedById), mas não mexe em nada que já
+  // aconteceu: reservas e ingressos emitidos continuam válidos, porque a
+  // validação na portaria depende só do status do Ticket, nunca do Event.
+  async unpublish(organizerId: string, eventId: string): Promise<Event> {
+    const event = await this.findOwnedEventOrThrow(organizerId, eventId);
+
+    if (event.status !== EventStatus.PUBLISHED) {
+      throw new BadRequestException(
+        `Só é possível despublicar eventos publicados (status atual: ${event.status}).`,
+      );
+    }
+
+    return this.prisma.event.update({
+      where: { id: eventId },
+      data: { status: EventStatus.DRAFT },
+    });
+  }
+
+  // Edita descrição/endereço a qualquer momento (informativo, não afeta
+  // assentos já vendidos). Setores só podem ser substituídos enquanto o
+  // evento nunca teve nenhuma reserva — mesmo uma expirada/recusada/cancelada
+  // deixa uma linha em Reservation apontando pro Seat antigo, e o banco
+  // rejeitaria a exclusão em cascata (FK RESTRICT) mesmo que o assento
+  // esteja livre hoje.
+  async update(organizerId: string, eventId: string, dto: UpdateEventDto) {
+    await this.findOwnedEventOrThrow(organizerId, eventId);
+
+    if (dto.sections) {
+      const reservationsCount = await this.prisma.reservation.count({
+        where: { eventId },
+      });
+      if (reservationsCount > 0) {
+        throw new BadRequestException(
+          'Não é possível alterar os setores: este evento já teve reservas (mesmo que expiradas ou canceladas).',
+        );
+      }
+
+      const totalSeats = dto.sections.reduce(
+        (sum, section) => sum + section.rowsCount * section.seatsPerRow,
+        0,
+      );
+      if (totalSeats > EVENTS_LIMITS.MAX_EVENT_CAPACITY) {
+        throw new BadRequestException(
+          `A capacidade total (${totalSeats} assentos) excede o máximo permitido de ${EVENTS_LIMITS.MAX_EVENT_CAPACITY}.`,
+        );
+      }
+
+      await this.prisma.$transaction(async (tx) => {
+        // Cascata: apagar as seções já apaga os assentos delas (Seat.section
+        // tem onDelete: Cascade no schema).
+        await tx.section.deleteMany({ where: { eventId } });
+
+        for (const sectionDto of dto.sections!) {
+          const section = await tx.section.create({
+            data: {
+              eventId,
+              name: sectionDto.name,
+              priceCents: sectionDto.priceCents,
+              rowsCount: sectionDto.rowsCount,
+              seatsPerRow: sectionDto.seatsPerRow,
+              ...(sectionDto.colorHex ? { colorHex: sectionDto.colorHex } : {}),
+            },
+          });
+
+          const seats = generateSeatsForSection(
+            sectionDto.rowsCount,
+            sectionDto.seatsPerRow,
+          );
+          await tx.seat.createMany({
+            data: seats.map((seat) => ({
+              sectionId: section.id,
+              eventId,
+              row: seat.row,
+              number: seat.number,
+              label: seat.label,
+            })),
+          });
+        }
+
+        await tx.event.update({
+          where: { id: eventId },
+          data: {
+            capacity: totalSeats,
+            ...(dto.description ? { description: dto.description } : {}),
+            ...(dto.venueAddress ? { venueAddress: dto.venueAddress } : {}),
+          },
+        });
+      });
+    } else if (dto.description || dto.venueAddress) {
+      await this.prisma.event.update({
+        where: { id: eventId },
+        data: {
+          ...(dto.description ? { description: dto.description } : {}),
+          ...(dto.venueAddress ? { venueAddress: dto.venueAddress } : {}),
+        },
+      });
+    }
+
+    const updated = await this.prisma.event.findUniqueOrThrow({
+      where: { id: eventId },
+      include: { sections: true },
+    });
+    return this.toSummary(updated);
+  }
+
+  // Exclusão de verdade (não é só marcar CANCELED) — só permitida se o
+  // evento nunca teve reserva nenhuma. Isso é reforçado pelo próprio banco
+  // (Reservation.event não tem onDelete: Cascade, é RESTRICT por padrão),
+  // mas checar antes dá uma mensagem clara em vez de um erro de FK cru.
+  async remove(organizerId: string, eventId: string): Promise<void> {
+    await this.findOwnedEventOrThrow(organizerId, eventId);
+
+    const reservationsCount = await this.prisma.reservation.count({
+      where: { eventId },
+    });
+    if (reservationsCount > 0) {
+      throw new ConflictException(
+        'Não é possível excluir: já existem reservas para este evento. Despublique-o em vez disso.',
+      );
+    }
+
+    await this.prisma.event.delete({ where: { id: eventId } });
+  }
+
+  private async findOwnedEventOrThrow(
+    organizerId: string,
+    eventId: string,
+  ): Promise<Event> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Evento não encontrado.');
+    }
+    if (event.organizerId !== organizerId) {
+      throw new ForbiddenException(
+        'Você não tem permissão para alterar este evento.',
+      );
+    }
+    return event;
   }
 
   async findPublished(query: EventListQueryDto) {

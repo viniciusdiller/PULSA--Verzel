@@ -58,9 +58,9 @@ export default function OrganizerDashboardPage() {
           {events.map((event) => (
             <div
               key={event.id}
-              className="flex items-center justify-between rounded-md border border-border/60 p-4"
+              className="flex items-center justify-between rounded-md border border-border/60 p-4 transition-colors hover:border-foreground/30"
             >
-              <div>
+              <Link href={`/organizer/${event.id}`} className="min-w-0 flex-1 hover:cursor-pointer">
                 <div className="mb-1 flex items-center gap-2">
                   <h2 className="font-heading text-lg">{event.title}</h2>
                   <Badge variant={STATUS_VARIANT[event.status]}>
@@ -71,7 +71,7 @@ export default function OrganizerDashboardPage() {
                   {event.venueCity} • {formatEventDateTime(event.startsAt)} • capacidade{" "}
                   {event.capacity} • a partir de {formatCentsToBRL(event.fromPriceCents)}
                 </p>
-              </div>
+              </Link>
               {event.status === "DRAFT" && (
                 <Button
                   size="sm"
