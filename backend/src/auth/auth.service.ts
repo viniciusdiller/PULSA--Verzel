@@ -77,6 +77,7 @@ export class AuthService {
       name: user.name,
       role: user.role,
       createdAt: user.createdAt,
+      balanceCents: user.balanceCents,
       statsCount,
       statsLabel: STATS_LABEL[user.role],
     };
@@ -118,6 +119,7 @@ export class AuthService {
       name: updated.name,
       role: updated.role,
       createdAt: updated.createdAt,
+      balanceCents: updated.balanceCents,
       statsCount,
       statsLabel: STATS_LABEL[updated.role],
     };

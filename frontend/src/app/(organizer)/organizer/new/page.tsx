@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { isAxiosError } from "axios";
@@ -17,25 +17,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageLoader } from "@/components/ui/page-loader";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { SectionsFieldArray } from "@/components/organizer/sections-field-array";
+import { sectionSchema, sectionsToPriceCents } from "@/lib/event-section-schema";
+import { EVENTS_MAX_CAPACITY } from "@/lib/event-constants";
 import { formatEventDate } from "@/lib/format";
 import type { CatalogEvent } from "@/types/catalog";
-
-const sectionSchema = z.object({
-  name: z.string().min(1, "Obrigatório"),
-  // O organizador digita em reais (o jeito que ele pensa em preço) — a
-  // conversão pra centavos (o que a API espera) acontece só no submit.
-  priceReais: z.coerce.number().min(0, "Não pode ser negativo"),
-  rowsCount: z.coerce.number().int().min(1).max(50),
-  seatsPerRow: z.coerce.number().int().min(1).max(50),
-});
 
 const configureSchema = z.object({
   description: z.string().min(10, "Descreva o evento em pelo menos 10 caracteres"),
@@ -86,8 +73,6 @@ export default function NewEventPage() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: "sections" });
-
   // A Ticketmaster já manda o endereço completo do local pra boa parte dos
   // eventos (ex. "620 Atlantic Ave" pro Barclays Center) — pré-preenchemos
   // com o que veio, mas deixamos editável, porque nem todo venue tem esse
@@ -97,21 +82,12 @@ export default function NewEventPage() {
     form.setValue("venueAddress", item.venueAddress);
   }
 
-  // Total de assentos ao vivo, pra o organizador ver o impacto de cada
-  // fileira/assento antes de tentar submeter — o limite de 300 só é
-  // checado no submit, mas exibir o total sempre evita a surpresa do erro.
-  const watchedSections = useWatch({ control: form.control, name: "sections" });
-  const liveTotalSeats = (watchedSections ?? []).reduce(
-    (sum, s) => sum + (Number(s?.rowsCount) || 0) * (Number(s?.seatsPerRow) || 0),
-    0,
-  );
-
   async function onSubmit(values: ConfigureFormValues) {
     if (!selected) return;
     try {
       const totalSeats = values.sections.reduce((sum, s) => sum + s.rowsCount * s.seatsPerRow, 0);
-      if (totalSeats > 300) {
-        toast.error(`Capacidade total (${totalSeats}) excede o máximo de 300 assentos.`);
+      if (totalSeats > EVENTS_MAX_CAPACITY) {
+        toast.error(`Capacidade total (${totalSeats}) excede o máximo de ${EVENTS_MAX_CAPACITY} assentos.`);
         return;
       }
 
@@ -129,12 +105,7 @@ export default function NewEventPage() {
         venueCity: selected.venueCity || "A definir",
         venueAddress: values.venueAddress,
         externalId: selected.externalId,
-        sections: values.sections.map(({ name, priceReais, rowsCount, seatsPerRow }) => ({
-          name,
-          priceCents: Math.round(priceReais * 100),
-          rowsCount,
-          seatsPerRow,
-        })),
+        sections: sectionsToPriceCents(values.sections),
       });
       toast.success("Evento criado como rascunho.");
       router.push(`/organizer/${created.id}`);
@@ -247,121 +218,7 @@ export default function NewEventPage() {
             )}
           />
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-heading text-xl">Setores</h2>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  append({ name: "", priceReais: 50, rowsCount: 5, seatsPerRow: 10 })
-                }
-              >
-                + Setor
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Cada setor vira um bloco do mapa de assentos: <strong>fileiras</strong> é quantas
-              fileiras o setor tem, <strong>assentos por fileira</strong> é quantos lugares em
-              cada uma — o setor abaixo, por exemplo, tem 5 fileiras de 10 assentos, 50 lugares
-              no total.
-            </p>
-
-            {/* Cabeçalho das colunas, uma vez só — repetir um <FormLabel> em
-                cada linha do array poluiria visualmente uma lista que pode
-                ter várias fileiras de setores. */}
-            <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 px-1 text-xs text-muted-foreground sm:grid">
-              <span>Nome do setor</span>
-              <span>Preço (R$)</span>
-              <span>Fileiras</span>
-              <span>Assentos por fileira</span>
-              <span />
-            </div>
-
-            {fields.map((field, index) => (
-              <div
-                key={field.id}
-                className="grid grid-cols-2 gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]"
-              >
-                <FormField
-                  control={form.control}
-                  name={`sections.${index}.name`}
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 sm:col-span-1">
-                      <FormLabel className="sm:sr-only">Nome do setor</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex.: Pista, Setor VIP" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`sections.${index}.priceReais`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="sm:sr-only">Preço em reais</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
-                            R$
-                          </span>
-                          <Input type="number" min={0} step="0.01" className="pl-9" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`sections.${index}.rowsCount`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="sm:sr-only">Fileiras</FormLabel>
-                      <FormControl>
-                        <Input type="number" min={1} max={50} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`sections.${index}.seatsPerRow`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="sm:sr-only">Assentos por fileira</FormLabel>
-                      <FormControl>
-                        <Input type="number" min={1} max={50} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="col-span-2 justify-self-start sm:col-span-1 sm:justify-self-auto"
-                  disabled={fields.length === 1}
-                  onClick={() => remove(index)}
-                >
-                  Remover setor
-                </Button>
-              </div>
-            ))}
-
-            <p className="text-sm text-muted-foreground">
-              Capacidade total:{" "}
-              <strong className={liveTotalSeats > 300 ? "text-destructive" : "text-foreground"}>
-                {liveTotalSeats} assento{liveTotalSeats === 1 ? "" : "s"}
-              </strong>{" "}
-              (máximo 300)
-            </p>
-          </div>
+          <SectionsFieldArray control={form.control} maxCapacity={EVENTS_MAX_CAPACITY} />
 
           <Button type="submit" size="lg" disabled={createEventMutation.isPending}>
             {createEventMutation.isPending ? "Criando..." : "Criar evento (rascunho)"}

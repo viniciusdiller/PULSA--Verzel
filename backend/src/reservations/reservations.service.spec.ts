@@ -33,6 +33,7 @@ describe('ReservationsService', () => {
       update: jest.Mock;
       updateMany: jest.Mock;
     };
+    user: { findUniqueOrThrow: jest.Mock };
     $transaction: jest.Mock;
   };
   type ReservationCreateArgs = { data: Record<string, unknown> };
@@ -50,6 +51,7 @@ describe('ReservationsService', () => {
       updateMany: jest.Mock;
     };
     seat: { update: jest.Mock; updateMany: jest.Mock };
+    user: { update: jest.Mock };
   };
   let ticketsService: { issueForReservation: jest.Mock };
   let configService: { get: jest.Mock };
@@ -68,6 +70,7 @@ describe('ReservationsService', () => {
         updateMany: jest.fn(),
       },
       seat: { update: jest.fn(), updateMany: jest.fn() },
+      user: { update: jest.fn() },
     };
 
     prisma = {
@@ -82,6 +85,9 @@ describe('ReservationsService', () => {
         findMany: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      user: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({ balanceCents: 0 }),
       },
       $transaction: jest.fn(async (arg: unknown) => {
         if (typeof arg === 'function') {
@@ -326,6 +332,7 @@ describe('ReservationsService', () => {
       seatId: 'seat-1',
       status: ReservationStatus.HOLDING,
       holdExpiresAt: futureDate(),
+      totalCents: 15000,
     };
 
     it('rejeita com NotFound quando a reserva não existe', async () => {
@@ -399,7 +406,11 @@ describe('ReservationsService', () => {
 
       expect(tx.reservation.update).toHaveBeenCalledWith({
         where: { id: 'res-1' },
-        data: { status: ReservationStatus.PAID, paymentCardLast4: '4242' },
+        data: {
+          status: ReservationStatus.PAID,
+          paymentCardLast4: '4242',
+          balanceAppliedCents: 0,
+        },
       });
       expect(tx.seat.update).toHaveBeenCalledWith({
         where: { id: 'seat-1' },
@@ -408,6 +419,7 @@ describe('ReservationsService', () => {
       expect(ticketsService.issueForReservation).toHaveBeenCalledTimes(1);
       expect(result.ticket).toEqual({ id: 'ticket-1' });
       expect(result.reservation.status).toBe(ReservationStatus.PAID);
+      expect(tx.user.update).not.toHaveBeenCalled();
     });
 
     it('recusa o pagamento com o cartão de teste de recusa: marca DECLINED, libera o assento e não emite ticket', async () => {
@@ -436,6 +448,91 @@ describe('ReservationsService', () => {
       });
       expect(ticketsService.issueForReservation).not.toHaveBeenCalled();
       expect(result.ticket).toBeNull();
+      expect(result.reservation.status).toBe(ReservationStatus.DECLINED);
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    it('paga inteiramente com saldo quando ele cobre o total — nem exige nem simula cartão', async () => {
+      prisma.reservation.findUnique.mockResolvedValue(holdingReservation);
+      prisma.user.findUniqueOrThrow.mockResolvedValue({ balanceCents: 20000 });
+      tx.reservation.update.mockResolvedValue({
+        ...holdingReservation,
+        status: ReservationStatus.PAID,
+      });
+
+      const result = await service.pay('cust-1', 'res-1', { useBalance: true });
+
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: 'cust-1' },
+        data: { balanceCents: { decrement: 15000 } },
+      });
+      expect(tx.reservation.update).toHaveBeenCalledWith({
+        where: { id: 'res-1' },
+        data: {
+          status: ReservationStatus.PAID,
+          paymentCardLast4: null,
+          balanceAppliedCents: 15000,
+        },
+      });
+      expect(tx.seat.update).toHaveBeenCalledWith({
+        where: { id: 'seat-1' },
+        data: { status: SeatStatus.SOLD },
+      });
+      expect(ticketsService.issueForReservation).toHaveBeenCalledTimes(1);
+      expect(result.reservation.status).toBe(ReservationStatus.PAID);
+    });
+
+    it('abate o saldo disponível e cobra o restante no cartão quando o saldo cobre só parte do total', async () => {
+      prisma.reservation.findUnique.mockResolvedValue(holdingReservation);
+      prisma.user.findUniqueOrThrow.mockResolvedValue({ balanceCents: 5000 });
+      tx.reservation.update.mockResolvedValue({
+        ...holdingReservation,
+        status: ReservationStatus.PAID,
+      });
+
+      await service.pay('cust-1', 'res-1', {
+        useBalance: true,
+        cardNumber: '4242 4242 4242 4242',
+      });
+
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: 'cust-1' },
+        data: { balanceCents: { decrement: 5000 } },
+      });
+      expect(tx.reservation.update).toHaveBeenCalledWith({
+        where: { id: 'res-1' },
+        data: {
+          status: ReservationStatus.PAID,
+          paymentCardLast4: '4242',
+          balanceAppliedCents: 5000,
+        },
+      });
+    });
+
+    it('rejeita com BadRequest quando o saldo não cobre tudo e nenhum cartão foi informado', async () => {
+      prisma.reservation.findUnique.mockResolvedValue(holdingReservation);
+      prisma.user.findUniqueOrThrow.mockResolvedValue({ balanceCents: 5000 });
+
+      await expect(
+        service.pay('cust-1', 'res-1', { useBalance: true }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('não debita nada do saldo quando o cartão da parte restante é recusado', async () => {
+      prisma.reservation.findUnique.mockResolvedValue(holdingReservation);
+      prisma.user.findUniqueOrThrow.mockResolvedValue({ balanceCents: 5000 });
+      tx.reservation.update.mockResolvedValue({
+        ...holdingReservation,
+        status: ReservationStatus.DECLINED,
+      });
+
+      const result = await service.pay('cust-1', 'res-1', {
+        useBalance: true,
+        cardNumber: '4000 0000 0000 0002',
+      });
+
+      expect(tx.user.update).not.toHaveBeenCalled();
       expect(result.reservation.status).toBe(ReservationStatus.DECLINED);
     });
   });

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfileQuery, useUpdateProfileMutation } from "@/hooks/use-profile";
 import { roleLabel } from "@/lib/auth";
-import { formatEventDate } from "@/lib/format";
+import { formatCentsToBRL, formatEventDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +51,7 @@ const passwordSchema = z
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function ProfilePage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const { data: profile, isLoading } = useProfileQuery();
   const updateProfileMutation = useUpdateProfileMutation();
 
@@ -128,7 +128,7 @@ export default function ProfilePage() {
             <Badge variant="outline">{roleLabel(profile.role)}</Badge>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+        <CardContent className="grid grid-cols-3 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Membro desde</p>
             <p className="font-medium text-foreground">{formatEventDate(profile.createdAt)}</p>
@@ -136,6 +136,12 @@ export default function ProfilePage() {
           <div>
             <p className="text-muted-foreground">{profile.statsLabel}</p>
             <p className="font-medium text-foreground">{profile.statsCount}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Saldo</p>
+            <p className="font-medium text-foreground">
+              {formatCentsToBRL(profile.balanceCents)}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -240,6 +246,18 @@ export default function ProfilePage() {
             </CardFooter>
           </form>
         </Form>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading text-lg">Sessão</CardTitle>
+          <CardDescription>Sair da sua conta neste dispositivo.</CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button variant="destructive" onClick={logout}>
+            Sair
+          </Button>
+        </CardFooter>
       </Card>
     </main>
   );

@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "motion/react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useSeatMapQuery } from "@/hooks/use-events";
+import { useProfileQuery } from "@/hooks/use-profile";
 import {
   useCancelReservationMutation,
   useHoldSeatMutation,
@@ -36,7 +37,7 @@ import type { Seat } from "@/types/event";
 import type { PayResult, Reservation } from "@/types/reservation";
 
 const paymentSchema = z.object({
-  cardNumber: z.string().min(13, "Número de cartão muito curto"),
+  cardNumber: z.string(),
 });
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
@@ -53,12 +54,14 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: seatMap, isLoading: seatMapLoading } = useSeatMapQuery(eventId);
+  const { data: profile } = useProfileQuery(!!user);
   const holdMutation = useHoldSeatMutation(eventId);
   const payMutation = usePayReservationMutation(eventId);
   const cancelMutation = useCancelReservationMutation(eventId);
 
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [payResult, setPayResult] = useState<PayResult | null>(null);
+  const [useBalance, setUseBalance] = useState(false);
 
   const remainingMs = useCountdown(reservation?.status === "HOLDING" ? reservation.holdExpiresAt : null);
   const expired = reservation?.status === "HOLDING" && remainingMs <= 0;
@@ -83,10 +86,21 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
 
   async function onSubmitPayment(values: PaymentFormValues) {
     if (!reservation) return;
+
+    const balanceCents = profile?.balanceCents ?? 0;
+    const balanceToApply = useBalance ? Math.min(balanceCents, reservation.totalCents) : 0;
+    const remainingCents = reservation.totalCents - balanceToApply;
+
+    if (remainingCents > 0 && values.cardNumber.trim().length < 13) {
+      form.setError("cardNumber", { message: "Número de cartão muito curto" });
+      return;
+    }
+
     try {
       const result = await payMutation.mutateAsync({
         reservationId: reservation.id,
-        cardNumber: values.cardNumber,
+        ...(remainingCents > 0 ? { cardNumber: values.cardNumber } : {}),
+        useBalance,
       });
       setPayResult(result);
     } catch (error) {
@@ -190,6 +204,10 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
 
   // Hold ativo -> formulário de pagamento
   if (reservation && reservation.status === "HOLDING") {
+    const balanceCents = profile?.balanceCents ?? 0;
+    const balanceToApply = useBalance ? Math.min(balanceCents, reservation.totalCents) : 0;
+    const remainingCents = reservation.totalCents - balanceToApply;
+
     return (
       <main className="mx-auto w-full max-w-md flex-1 px-6 py-12">
         <Card>
@@ -210,7 +228,7 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
             </div>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-1 text-sm text-muted-foreground">
               Total: {formatCentsToBRL(reservation.totalCents)}
             </p>
 
@@ -224,22 +242,47 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
             ) : (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmitPayment)} className="grid gap-4">
-                  <FormField
-                    control={form.control}
-                    name="cardNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número do cartão</FormLabel>
-                        <FormControl>
-                          <Input placeholder="4242 4242 4242 4242" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Teste: 4242 4242 4242 4242 aprova sempre; 4000 0000 0000 0002 recusa sempre.
-                  </p>
+                  {balanceCents > 0 && (
+                    <label className="mb-1 flex items-center gap-2 text-sm hover:cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useBalance}
+                        onChange={(e) => setUseBalance(e.target.checked)}
+                        className="size-4 rounded border-input accent-primary hover:cursor-pointer"
+                      />
+                      Usar meu saldo ({formatCentsToBRL(balanceCents)})
+                    </label>
+                  )}
+
+                  {useBalance && (
+                    <p className="-mt-2 text-xs text-muted-foreground">
+                      {remainingCents === 0
+                        ? `Seu saldo cobre o total — nenhum cartão necessário.`
+                        : `${formatCentsToBRL(balanceToApply)} do saldo + ${formatCentsToBRL(remainingCents)} no cartão.`}
+                    </p>
+                  )}
+
+                  {remainingCents > 0 && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="cardNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Número do cartão</FormLabel>
+                            <FormControl>
+                              <Input placeholder="4242 4242 4242 4242" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Teste: 4242 4242 4242 4242 aprova sempre; 4000 0000 0000 0002 recusa
+                        sempre.
+                      </p>
+                    </>
+                  )}
                   <Button type="submit" disabled={payMutation.isPending}>
                     {payMutation.isPending ? (
                       <>

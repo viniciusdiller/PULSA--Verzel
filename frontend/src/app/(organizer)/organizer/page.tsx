@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
@@ -23,9 +24,27 @@ const STATUS_VARIANT: Record<EventStatus, "secondary" | "success" | "destructive
   CANCELED: "destructive",
 };
 
+const PAGE_SIZE = 10;
+
+const STATUS_FILTERS: { label: string; value?: EventStatus }[] = [
+  { label: "Todos", value: undefined },
+  { label: "Rascunho", value: "DRAFT" },
+  { label: "Publicado", value: "PUBLISHED" },
+  { label: "Cancelado", value: "CANCELED" },
+];
+
 export default function OrganizerDashboardPage() {
-  const { data: events, isLoading } = useMyEventsQuery();
+  const [status, setStatus] = useState<EventStatus | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isPlaceholderData } = useMyEventsQuery({ status, page, pageSize: PAGE_SIZE });
   const publishMutation = usePublishEventMutation();
+  const events = data?.items;
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
+
+  function handleStatusChange(next: EventStatus | undefined) {
+    setStatus(next);
+    setPage(1);
+  }
 
   async function handlePublish(eventId: string) {
     try {
@@ -51,16 +70,29 @@ export default function OrganizerDashboardPage() {
         </Button>
       </div>
 
+      <div className="mb-6 flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((filter) => (
+          <Button
+            key={filter.label}
+            size="sm"
+            variant={status === filter.value ? "default" : "outline"}
+            onClick={() => handleStatusChange(filter.value)}
+          >
+            {filter.label}
+          </Button>
+        ))}
+      </div>
+
       {isLoading ? (
         <PageLoader label="Carregando seus eventos..." />
       ) : events && events.length > 0 ? (
-        <div className="space-y-3">
+        <div className={isPlaceholderData ? "space-y-3 opacity-60" : "space-y-3"}>
           {events.map((event) => (
             <div
               key={event.id}
-              className="flex items-center justify-between rounded-md border border-border/60 p-4"
+              className="flex items-center justify-between rounded-md border border-border/60 p-4 transition-colors hover:border-foreground/30"
             >
-              <div>
+              <Link href={`/organizer/${event.id}`} className="min-w-0 flex-1 hover:cursor-pointer">
                 <div className="mb-1 flex items-center gap-2">
                   <h2 className="font-heading text-lg">{event.title}</h2>
                   <Badge variant={STATUS_VARIANT[event.status]}>
@@ -71,7 +103,7 @@ export default function OrganizerDashboardPage() {
                   {event.venueCity} • {formatEventDateTime(event.startsAt)} • capacidade{" "}
                   {event.capacity} • a partir de {formatCentsToBRL(event.fromPriceCents)}
                 </p>
-              </div>
+              </Link>
               {event.status === "DRAFT" && (
                 <Button
                   size="sm"
@@ -92,6 +124,10 @@ export default function OrganizerDashboardPage() {
             </div>
           ))}
         </div>
+      ) : status ? (
+        <p className="text-muted-foreground">
+          Nenhum evento com status &quot;{STATUS_LABEL[status]}&quot;.
+        </p>
       ) : (
         <p className="text-muted-foreground">
           Você ainda não criou nenhum evento.{" "}
@@ -100,6 +136,32 @@ export default function OrganizerDashboardPage() {
           </Link>
           .
         </p>
+      )}
+
+      {!isLoading && data && data.total > PAGE_SIZE && (
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Página {page} de {totalPages} • {data.total} evento{data.total === 1 ? "" : "s"}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
       )}
     </main>
   );

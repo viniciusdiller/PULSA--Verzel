@@ -221,13 +221,39 @@ export class ReservationsService {
       throw new GoneException('O tempo da reserva expirou. Reserve novamente.');
     }
 
-    // Pode lançar BadRequestException para número de cartão malformado —
-    // deixamos propagar antes de tocar no banco.
-    const outcome = simulatePayment(dto.cardNumber);
-    const last4 = normalizeCardNumber(dto.cardNumber).slice(-4);
+    // Saldo cobre o quanto der, o cartão (se precisar) só entra pro
+    // restante — nunca o contrário, pra não cobrar no cartão algo que o
+    // saldo já cobriria.
+    const customer = await this.prisma.user.findUniqueOrThrow({
+      where: { id: customerId },
+    });
+    const balanceToApply = dto.useBalance
+      ? Math.min(customer.balanceCents, reservation.totalCents)
+      : 0;
+    const remainingCents = reservation.totalCents - balanceToApply;
+
+    let outcome: { approved: boolean; declineReason?: string };
+    let last4: string | null = null;
+
+    if (remainingCents === 0) {
+      // Saldo cobriu o valor inteiro — nem simula cartão, aprova direto.
+      outcome = { approved: true };
+    } else {
+      if (!dto.cardNumber) {
+        throw new BadRequestException(
+          'Informe um cartão para pagar a parte não coberta pelo saldo.',
+        );
+      }
+      // Pode lançar BadRequestException para número de cartão malformado —
+      // deixamos propagar antes de tocar no banco.
+      outcome = simulatePayment(dto.cardNumber);
+      last4 = normalizeCardNumber(dto.cardNumber).slice(-4);
+    }
 
     return this.prisma.$transaction(async (tx) => {
       if (!outcome.approved) {
+        // Recusado: nada de saldo é debitado — só o cartão falhou, o
+        // saldo do cliente continua intacto pra tentar de novo.
         const declined = await tx.reservation.update({
           where: { id: reservationId },
           data: {
@@ -243,9 +269,20 @@ export class ReservationsService {
         return { reservation: declined, ticket: null };
       }
 
+      if (balanceToApply > 0) {
+        await tx.user.update({
+          where: { id: customerId },
+          data: { balanceCents: { decrement: balanceToApply } },
+        });
+      }
+
       const paid = await tx.reservation.update({
         where: { id: reservationId },
-        data: { status: ReservationStatus.PAID, paymentCardLast4: last4 },
+        data: {
+          status: ReservationStatus.PAID,
+          paymentCardLast4: last4,
+          balanceAppliedCents: balanceToApply,
+        },
       });
       await tx.seat.update({
         where: { id: reservation.seatId },

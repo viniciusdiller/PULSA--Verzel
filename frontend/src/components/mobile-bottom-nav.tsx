@@ -58,11 +58,25 @@ export function MobileBottomNav() {
 
   const items = useMemo(() => getItemsForRole(user?.role), [user?.role]);
 
+  // Pega o href mais específico que bate com a rota atual, não o primeiro
+  // da lista — com startsWith puro, "/organizer/new" também "começa com"
+  // "/organizer" e o item "Eventos" (que vem antes no array) ganhava o
+  // foco no lugar de "Novo evento". O limite de "/" no startsWith evita
+  // que "/organizer-outra-coisa" combine com "/organizer" por acidente.
   const activeIndex = useMemo(() => {
-    const matched = items.findIndex((item) =>
-      item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
-    );
-    return matched === -1 ? 0 : matched;
+    let bestIndex = -1;
+    let bestLength = -1;
+    items.forEach((item, index) => {
+      const isMatch =
+        item.href === "/"
+          ? pathname === "/"
+          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+      if (isMatch && item.href.length > bestLength) {
+        bestIndex = index;
+        bestLength = item.href.length;
+      }
+    });
+    return bestIndex === -1 ? 0 : bestIndex;
   }, [items, pathname]);
 
   if (isLoading) return null;

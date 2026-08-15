@@ -6,6 +6,7 @@ export interface Profile {
   name: string;
   role: Role;
   createdAt: string;
+  balanceCents: number;
   statsCount: number;
   statsLabel: string;
 }

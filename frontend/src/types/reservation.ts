@@ -8,6 +8,7 @@ export interface Reservation {
   status: ReservationStatus;
   holdExpiresAt: string | null;
   totalCents: number;
+  balanceAppliedCents: number;
   paymentCardLast4: string | null;
   paymentDeclineReason: string | null;
   createdAt: string;

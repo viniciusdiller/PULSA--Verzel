@@ -48,13 +48,18 @@ model User {
   passwordHash String
   name         String
   role         Role
+  // Saldo da plataforma, em centavos — creditado quando um organizador
+  // cancela um evento que o cliente já tinha pago (ver
+  // EventsService.cancelWithRefund). Usável em compras futuras.
+  balanceCents Int      @default(0)
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @db.Timestamptz(6)
 
-  eventsOrganized Event[]       @relation("EventOrganizer")
-  reservations    Reservation[] @relation("ReservationCustomer")
-  ticketsOwned    Ticket[]      @relation("TicketOwner")
-  gateValidations Ticket[]      @relation("TicketGateValidator")
+  eventsOrganized     Event[]                    @relation("EventOrganizer")
+  reservations        Reservation[]              @relation("ReservationCustomer")
+  ticketsOwned        Ticket[]                   @relation("TicketOwner")
+  gateValidations     Ticket[]                   @relation("TicketGateValidator")
+  cancellationNotices EventCancellationNotice[]
 
   @@index([role])
   @@map("users")
@@ -145,6 +150,10 @@ model Reservation {
   status               ReservationStatus @default(HOLDING)
   holdExpiresAt         DateTime?         @db.Timestamptz(6)
   totalCents            Int
+  // Quanto do totalCents foi pago com saldo da plataforma, em vez de
+  // cartão — 0 na grande maioria das reservas, só existe quando o
+  // cliente opta por usar o saldo no checkout.
+  balanceAppliedCents  Int               @default(0)
   paymentCardLast4      String?
   paymentDeclineReason  String?
 
@@ -189,4 +198,25 @@ model Ticket {
   @@index([shareSlug])
   @@index([ownerId])
   @@map("tickets")
+}
+
+// Um aviso por (cliente, evento cancelado) — criado junto com o estorno
+// (EventsService.cancelWithRefund) e mostrado como uma tela de desculpas
+// no próximo login do cliente. eventTitle é um snapshot deliberado: o
+// Event pode não existir mais (rota de exclusão dura pra eventos sem
+// nenhuma reserva), mas o aviso de um evento que HOUVE reserva sempre
+// sobrevive ao Event (só CANCELED, nunca apagado nesse caso).
+model EventCancellationNotice {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  eventId       String
+  eventTitle    String
+  refundedCents Int
+
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  acknowledgedAt DateTime? @db.Timestamptz(6)
+
+  @@index([userId, acknowledgedAt])
+  @@map("event_cancellation_notices")
 }
