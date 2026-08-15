@@ -316,7 +316,13 @@ export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkou
   // Seleção de assento
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-      <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">
+      <Link
+        href={`/events/${eventId}`}
+        className="text-sm text-muted-foreground hover:underline"
+      >
+        ← Voltar ao evento
+      </Link>
+      <p className="mt-4 text-xs tracking-[0.2em] text-muted-foreground uppercase">
         {seatMap.event.title}
       </p>
       <h1 className="font-heading mb-8 text-3xl">Escolha seu assento</h1>
