@@ -21,9 +21,14 @@ import type { EventSummary } from "@/types/event";
 export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
   if (events.length === 0) return null;
 
-  // Coverflow precisa de slides suficientes pra não repetir a mesma
-  // imagem ao dar loop — com poucos itens, simplesmente não fecha o loop.
-  const canLoop = events.length >= 3;
+  // "loop" do Swiper clona slides pra fingir um carrossel infinito, mas
+  // precisa de bem mais slides reais do que cabem na tela pra não sobrar
+  // clone vazio no meio do caminho — com só até 4 eventos em destaque e
+  // 3 visíveis ao mesmo tempo, isso é exatamente o que causava o bug de
+  // "às vezes não aparece nenhum card do lado". "rewind" resolve o mesmo
+  // problema de UX (autoplay/setas voltam pro início ao chegar no fim)
+  // sem precisar clonar nada.
+  const canAutoplay = events.length > 1;
 
   const overrideStyles = `
     .pulsa-featured-carousel .swiper-pagination-bullet {
@@ -52,21 +57,19 @@ export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
         effect="coverflow"
         grabCursor
         centeredSlides
-        loop={canLoop}
-        autoplay={
-          canLoop ? { delay: 4500, disableOnInteraction: false } : false
-        }
-        slidesPerView={1.1}
+        rewind={canAutoplay}
+        autoplay={canAutoplay ? { delay: 4500, disableOnInteraction: false } : false}
+        slidesPerView={1.15}
         breakpoints={{
-          640: { slidesPerView: 1.6 },
-          1024: { slidesPerView: 2.2 },
+          640: { slidesPerView: 2.2 },
+          1024: { slidesPerView: 3 },
         }}
-        spaceBetween={24}
+        spaceBetween={20}
         coverflowEffect={{
           rotate: 0,
           stretch: 0,
-          depth: 100,
-          modifier: 2.5,
+          depth: 80,
+          modifier: 1.5,
           slideShadows: false,
         }}
         pagination={{ clickable: true }}
