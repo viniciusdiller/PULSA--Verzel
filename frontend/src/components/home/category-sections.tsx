@@ -1,4 +1,4 @@
-import { EventCard } from "@/components/events/event-card";
+import { EventCarousel } from "@/components/events/event-carousel";
 import type { EventSummary } from "@/types/event";
 
 // Agrupa os eventos publicados por Event.category — preenchida pelo
@@ -27,11 +27,7 @@ export function CategorySections({ events }: { events: EventSummary[] }) {
       {categories.map(([category, categoryEvents]) => (
         <div key={category}>
           <h2 className="font-heading mb-6 text-2xl font-bold">{category}</h2>
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-            {categoryEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+          <EventCarousel events={categoryEvents} />
         </div>
       ))}
     </div>
