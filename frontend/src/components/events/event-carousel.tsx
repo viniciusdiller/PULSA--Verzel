@@ -40,10 +40,13 @@ export function EventCarousel({ events, className }: { events: EventSummary[]; c
         onSlideChange={syncEdges}
         onResize={syncEdges}
         onBreakpoint={syncEdges}
-        slidesPerView={2}
-        spaceBetween={20}
+        // No mobile mostra 1 card inteiro + uma fatia do próximo — deixa
+        // óbvio que dá pra arrastar, em vez de parecer uma grade cortada.
+        slidesPerView={1.15}
+        spaceBetween={16}
         breakpoints={{
-          640: { slidesPerView: 3, spaceBetween: 24 },
+          480: { slidesPerView: 1.5, spaceBetween: 16 },
+          640: { slidesPerView: 2.5, spaceBetween: 20 },
           1024: { slidesPerView: 4, spaceBetween: 24 },
         }}
         className="!pb-1"
