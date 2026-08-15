@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
+import { Armchair, Clock3, Copy, MapPin, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,24 +41,67 @@ export function TicketCard({
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="flex flex-col items-center gap-4 py-6 text-center sm:flex-row sm:items-start sm:text-left">
+    <Card className="overflow-hidden py-0 shadow-card">
+      {/* Banner do evento — mesmo tratamento de imagem+gradiente já usado
+          no seletor de evento da portaria, pra manter a linguagem visual
+          consistente entre os papéis. O badge de status mora DENTRO do
+          mesmo bloco de texto que o título (não mais posicionado
+          separado, flutuando no topo da imagem) — assim os dois nunca
+          disputam o mesmo espaço, mesmo com título de 2+ linhas. */}
+      <div className="relative h-36 w-full shrink-0 overflow-hidden sm:h-40">
+        {ticket.event.imageUrl ? (
+          <Image
+            src={ticket.event.imageUrl}
+            alt=""
+            aria-hidden
+            fill
+            sizes="(max-width: 640px) 100vw, 768px"
+            className="object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-violet/30 via-transparent to-primary/20" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <Badge variant={STATUS_VARIANT[ticket.status]} className="mb-1.5">
+            {STATUS_LABEL[ticket.status]}
+          </Badge>
+          <h3 className="font-heading line-clamp-2 text-lg leading-tight text-foreground sm:text-xl">
+            {ticket.event.title}
+          </h3>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <MapPin className="size-3.5 shrink-0" />
+            {ticket.event.venueName}, {ticket.event.venueCity} —{" "}
+            {formatEventDateTime(ticket.event.startsAt)}
+          </p>
+        </div>
+      </div>
+
+      {/* Linha perfurada — mesmo motivo de "canhoto de ingresso" do
+          wordmark PULSA (site-header), aqui separando o cartaz do evento
+          da parte funcional (QR/código) do ingresso. */}
+      <div
+        aria-hidden
+        className="h-px w-full"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(90deg, var(--color-border) 0 6px, transparent 6px 12px)",
+        }}
+      />
+
+      <CardContent className="flex flex-col items-center gap-4 py-5 text-center sm:flex-row sm:items-start sm:text-left">
         <div className="rounded-lg border border-border/60 bg-white p-3">
           <QRCodeSVG value={ticket.qrToken} size={140} />
         </div>
 
         <div className="flex-1 space-y-2">
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <h3 className="font-heading text-xl">{ticket.event.title}</h3>
-            <Badge variant={STATUS_VARIANT[ticket.status]}>{STATUS_LABEL[ticket.status]}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {ticket.event.venueName}, {ticket.event.venueCity} —{" "}
-            {formatEventDateTime(ticket.event.startsAt)}
+          <p className="flex items-center justify-center gap-1.5 text-sm sm:justify-start">
+            <Armchair className="size-4 text-muted-foreground" />
+            Assento {ticket.seat.label}
           </p>
-          <p className="text-sm">Assento {ticket.seat.label}</p>
           {ticket.usedAt && (
-            <p className="text-xs text-muted-foreground">
+            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground sm:justify-start">
+              <Clock3 className="size-3.5" />
               Utilizado em {formatEventDateTime(ticket.usedAt)}
             </p>
           )}
@@ -65,11 +110,12 @@ export function TicketCard({
             <p className="text-xs tracking-wide text-muted-foreground uppercase">
               Código do ingresso
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <code className="rounded-md bg-muted px-2.5 py-1.5 font-mono text-base font-semibold tracking-[0.15em]">
                 {ticket.shortCode.slice(0, 3)} {ticket.shortCode.slice(3)}
               </code>
               <Button variant="outline" size="sm" onClick={copyCode}>
+                <Copy className="size-3.5" />
                 Copiar código
               </Button>
             </div>
@@ -81,6 +127,7 @@ export function TicketCard({
 
           {showShareButton && (
             <Button variant="outline" size="sm" onClick={copyShareLink} className="mt-2">
+              <Share2 className="size-3.5" />
               Copiar link de compartilhamento
             </Button>
           )}
