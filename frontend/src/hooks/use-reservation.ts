@@ -45,12 +45,19 @@ export function useCancelReservationMutation(eventId: string) {
   });
 }
 
+export interface PayReservationInput {
+  reservationId: string;
+  cardNumber?: string;
+  useBalance?: boolean;
+}
+
 export function usePayReservationMutation(eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ reservationId, cardNumber }: { reservationId: string; cardNumber: string }) => {
+    mutationFn: async ({ reservationId, cardNumber, useBalance }: PayReservationInput) => {
       const { data } = await apiClient.post<PayResult>(`/reservations/${reservationId}/pay`, {
-        cardNumber,
+        ...(cardNumber ? { cardNumber } : {}),
+        ...(useBalance ? { useBalance } : {}),
       });
       return data;
     },
@@ -62,6 +69,9 @@ export function usePayReservationMutation(eventId: string) {
       if (data.ticket) {
         void queryClient.invalidateQueries({ queryKey: ["tickets", "mine"] });
       }
+      // O saldo pode ter sido debitado nesse pagamento — atualiza o chip
+      // do header/perfil.
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
