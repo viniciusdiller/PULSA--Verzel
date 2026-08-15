@@ -87,32 +87,32 @@ export default function EventsListPage() {
       )}
       {heroEvent && <HeroEvent event={heroEvent} />}
 
-      <div className="space-y-3">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por título do evento..."
-          className="max-w-sm"
-        />
-        <EventFilters
-          cities={cityOptions}
-          categories={categoryOptions}
-          selectedCity={selectedCity}
-          selectedCategory={selectedCategory}
-          searchTerm={search}
-          onChangeCity={setSelectedCity}
-          onChangeCategory={setSelectedCategory}
-          onClearSearch={() => setSearch("")}
-          onClearAll={() => {
-            setSearch("");
-            setSelectedCity(null);
-            setSelectedCategory(null);
-          }}
-        />
-      </div>
-
       <div>
         <h2 className="font-heading mb-6 text-2xl font-bold">Eventos em cartaz</h2>
+
+        <div className="mb-6 space-y-3">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por título do evento..."
+            className="max-w-sm"
+          />
+          <EventFilters
+            cities={cityOptions}
+            categories={categoryOptions}
+            selectedCity={selectedCity}
+            selectedCategory={selectedCategory}
+            searchTerm={search}
+            onChangeCity={setSelectedCity}
+            onChangeCategory={setSelectedCategory}
+            onClearSearch={() => setSearch("")}
+            onClearAll={() => {
+              setSearch("");
+              setSelectedCity(null);
+              setSelectedCategory(null);
+            }}
+          />
+        </div>
 
         {isLoading ? (
           <PageLoader label="Carregando eventos..." />
