@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useEventsQuery } from "@/hooks/use-events";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { EventCard } from "@/components/events/event-card";
 import { HeroEvent } from "@/components/home/hero-event";
 import { CityChips } from "@/components/home/city-chips";
@@ -13,20 +14,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function EventsListPage() {
   const [search, setSearch] = useState("");
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  // O campo de texto continua instantâneo (`search`), só a busca de
+  // verdade espera uma pausa na digitação — evita 1 requisição por tecla.
+  const debouncedSearch = useDebouncedValue(search, 450);
 
   // Duas buscas: uma só com o texto (fonte do hero e das cidades reais
   // disponíveis, pra não sumir com as outras opções de cidade quando uma
   // já está selecionada) e outra com texto+cidade (a grade de fato).
-  const { data: allData, isLoading: allLoading } = useEventsQuery(search);
+  const { data: allData, isLoading: allLoading } = useEventsQuery(debouncedSearch);
   const { data: filteredData, isLoading: filteredLoading, isError } = useEventsQuery(
-    search,
+    debouncedSearch,
     selectedCity ?? undefined,
   );
 
   const heroEvent = useMemo(() => {
-    if (search || selectedCity) return null;
+    if (debouncedSearch || selectedCity) return null;
     return allData?.items[0] ?? null;
-  }, [allData, search, selectedCity]);
+  }, [allData, debouncedSearch, selectedCity]);
 
   const isLoading = allLoading || filteredLoading;
 
