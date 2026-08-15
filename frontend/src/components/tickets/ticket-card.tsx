@@ -42,9 +42,11 @@ export function TicketCard({
 
   return (
     <Card className="overflow-hidden py-0 shadow-card">
-      {/* Banner do evento — mesmo tratamento de imagem+gradiente já usado
-          no seletor de evento da portaria, pra manter a linguagem visual
-          consistente entre os papéis. */}
+      {/* Banner do evento — mesmo tratamento de imagem já usado no
+          seletor de evento da portaria. Título/status ficam FORA da
+          imagem (não sobrepostos): títulos longos de show quebram em
+          2+ linhas e um badge flutuando por cima virava sobreposição
+          feia em telas estreitas. */}
       <div className="relative h-28 w-full shrink-0 overflow-hidden sm:h-32">
         {ticket.event.imageUrl ? (
           <Image
@@ -58,20 +60,24 @@ export function TicketCard({
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-violet/30 via-transparent to-primary/20" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        <Badge variant={STATUS_VARIANT[ticket.status]} className="absolute top-3 right-3">
-          {STATUS_LABEL[ticket.status]}
-        </Badge>
-        <div className="absolute inset-x-0 bottom-0 p-4">
+      </div>
+
+      <div className="flex items-start justify-between gap-3 px-4 pt-4">
+        <div className="min-w-0">
           <h3 className="font-heading text-lg leading-tight text-foreground sm:text-xl">
             {ticket.event.title}
           </h3>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="size-3.5 shrink-0" />
-            {ticket.event.venueName}, {ticket.event.venueCity} —{" "}
-            {formatEventDateTime(ticket.event.startsAt)}
+            <span className="truncate">
+              {ticket.event.venueName}, {ticket.event.venueCity} —{" "}
+              {formatEventDateTime(ticket.event.startsAt)}
+            </span>
           </p>
         </div>
+        <Badge variant={STATUS_VARIANT[ticket.status]} className="mt-1 shrink-0">
+          {STATUS_LABEL[ticket.status]}
+        </Badge>
       </div>
 
       {/* Linha perfurada — mesmo motivo de "canhoto de ingresso" do
@@ -79,7 +85,7 @@ export function TicketCard({
           da parte funcional (QR/código) do ingresso. */}
       <div
         aria-hidden
-        className="h-px w-full"
+        className="mt-4 h-px w-full"
         style={{
           backgroundImage:
             "repeating-linear-gradient(90deg, var(--color-border) 0 6px, transparent 6px 12px)",
