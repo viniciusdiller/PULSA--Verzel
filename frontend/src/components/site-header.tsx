@@ -33,9 +33,11 @@ export function SiteHeader() {
           />
         </Link>
 
-        {/* No mobile a navegação principal e o logout vivem na barra
-            inferior (MobileBottomNav) — o header fica só com marca +
-            tema, evitando duplicar a mesma ação em dois lugares. */}
+        {/* No mobile a navegação principal vive na barra inferior
+            (MobileBottomNav) — o header fica com marca + tema em todas as
+            larguras, e o "Sair" segue aqui isolado (nunca dentro da barra
+            de navegação, pra não ficar colado a um item real e disparar
+            logout sem querer). */}
         <nav className="flex items-center gap-2">
           {isLoading ? null : user ? (
             <>
@@ -54,7 +56,7 @@ export function SiteHeader() {
                 <span className="text-sm text-foreground">{user.name}</span>
                 <Badge variant="outline">{roleLabel(user.role)}</Badge>
               </div>
-              <Button variant="ghost" size="sm" onClick={logout} className="hidden sm:inline-flex">
+              <Button variant="ghost" size="sm" onClick={logout}>
                 Sair
               </Button>
               <ThemeToggle />
