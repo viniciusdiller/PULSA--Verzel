@@ -7,7 +7,7 @@ import { useMyEventsQuery, usePublishEventMutation } from "@/hooks/use-organizer
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
 import type { EventStatus } from "@/types/event";
 
@@ -52,11 +52,7 @@ export default function OrganizerDashboardPage() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full" />
-          ))}
-        </div>
+        <PageLoader label="Carregando seus eventos..." />
       ) : events && events.length > 0 ? (
         <div className="space-y-3">
           {events.map((event) => (

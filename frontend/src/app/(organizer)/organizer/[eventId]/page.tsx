@@ -7,7 +7,7 @@ import { isAxiosError } from "axios";
 import { useMyEventsQuery, usePublishEventMutation } from "@/hooks/use-organizer-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
 
 export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[eventId]">) {
@@ -31,7 +31,7 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
   if (isLoading) {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-        <Skeleton className="h-10 w-2/3" />
+        <PageLoader />
       </main>
     );
   }

@@ -8,7 +8,7 @@ import { CityChips } from "@/components/home/city-chips";
 import { TrustSection } from "@/components/home/trust-section";
 import { CtaBand } from "@/components/home/cta-band";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function EventsListPage() {
   const [search, setSearch] = useState("");
@@ -61,11 +61,7 @@ export default function EventsListPage() {
         <h2 className="font-heading mb-6 text-2xl font-bold">Eventos em cartaz</h2>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[3/4] w-full" />
-            ))}
-          </div>
+          <PageLoader label="Carregando eventos..." />
         ) : isError ? (
           <p className="text-muted-foreground">
             Não foi possível carregar os eventos agora. Tente novamente em instantes.
