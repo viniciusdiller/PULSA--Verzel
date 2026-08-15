@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type {
-  GateHistoryEventSummary,
+  GateHistoryEventsPage,
   GateHistoryTicketsPage,
   GateValidationResult,
 } from "@/types/gate";
@@ -18,15 +18,16 @@ export function useValidateTicketMutation(eventId: string) {
   });
 }
 
-export function useGateHistoryEventsQuery() {
+export function useGateHistoryEventsQuery(page: number, pageSize: number) {
   return useQuery({
-    queryKey: ["gate", "history", "events"],
+    queryKey: ["gate", "history", "events", { page, pageSize }],
     queryFn: async () => {
-      const { data } = await apiClient.get<GateHistoryEventSummary[]>(
-        "/gate/history/events",
-      );
+      const { data } = await apiClient.get<GateHistoryEventsPage>("/gate/history/events", {
+        params: { page, pageSize },
+      });
       return data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 

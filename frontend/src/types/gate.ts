@@ -38,3 +38,10 @@ export interface GateHistoryTicketsPage {
   page: number;
   pageSize: number;
 }
+
+export interface GateHistoryEventsPage {
+  items: GateHistoryEventSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
