@@ -15,10 +15,14 @@ import type { EventSummary } from "@/types/event";
 // o texto do evento.
 export function EventCard({ event }: { event: EventSummary }) {
   return (
-    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="h-full">
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.2 }}
+      className="h-full"
+    >
       <Link href={`/events/${event.id}`} className="group flex h-full flex-col">
         <Card className="flex h-full flex-col overflow-hidden py-0 shadow-card transition-shadow duration-300 group-hover:border-foreground/30 group-hover:shadow-card-hover">
-          <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-muted">
+          <div className="relative aspect-video w-full shrink-0 overflow-hidden">
             {event.imageUrl ? (
               <Image
                 src={event.imageUrl}
@@ -29,7 +33,9 @@ export function EventCard({ event }: { event: EventSummary }) {
               />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                <span className="font-heading text-2xl">{event.title.slice(0, 1)}</span>
+                <span className="font-heading text-2xl">
+                  {event.title.slice(0, 1)}
+                </span>
               </div>
             )}
           </div>

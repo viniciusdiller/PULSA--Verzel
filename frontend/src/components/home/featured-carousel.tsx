@@ -43,12 +43,9 @@ export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
       transition={{ duration: 0.5 }}
     >
       <style>{overrideStyles}</style>
-      <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+      <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase mb-3">
         Em destaque
       </p>
-      <h2 className="font-heading mt-2 mb-6 text-2xl font-bold">
-        Selecionado pelos organizadores
-      </h2>
 
       <Swiper
         modules={[EffectCoverflow, Autoplay, Pagination]}
@@ -56,14 +53,22 @@ export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
         grabCursor
         centeredSlides
         loop={canLoop}
-        autoplay={canLoop ? { delay: 4500, disableOnInteraction: false } : false}
+        autoplay={
+          canLoop ? { delay: 4500, disableOnInteraction: false } : false
+        }
         slidesPerView={1.1}
         breakpoints={{
           640: { slidesPerView: 1.6 },
           1024: { slidesPerView: 2.2 },
         }}
         spaceBetween={24}
-        coverflowEffect={{ rotate: 0, stretch: 0, depth: 100, modifier: 2.5, slideShadows: false }}
+        coverflowEffect={{
+          rotate: 0,
+          stretch: 0,
+          depth: 100,
+          modifier: 2.5,
+          slideShadows: false,
+        }}
         pagination={{ clickable: true }}
         className="pulsa-featured-carousel !pb-12"
       >
@@ -89,7 +94,9 @@ export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
                 <p className="text-xs text-white/80 uppercase">
                   {event.venueCity} • {formatEventDateTime(event.startsAt)}
                 </p>
-                <h3 className="font-heading mt-1 text-xl font-bold text-white">{event.title}</h3>
+                <h3 className="font-heading mt-1 text-xl font-bold text-white">
+                  {event.title}
+                </h3>
               </div>
             </Link>
           </SwiperSlide>
