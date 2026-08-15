@@ -11,6 +11,7 @@ import { EventsModule } from './events/events.module';
 import { GateModule } from './gate/gate.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { NoticesModule } from './notices/notices.module';
 import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -28,6 +29,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
     ReservationsModule,
     TicketsModule,
     GateModule,
+    NoticesModule,
   ],
   controllers: [HealthController],
   providers: [
