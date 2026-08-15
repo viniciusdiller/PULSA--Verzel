@@ -86,6 +86,15 @@ export default function NewEventPage() {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "sections" });
 
+  // A Ticketmaster já manda o endereço completo do local pra boa parte dos
+  // eventos (ex. "620 Atlantic Ave" pro Barclays Center) — pré-preenchemos
+  // com o que veio, mas deixamos editável, porque nem todo venue tem esse
+  // dado e o organizador pode querer ajustar.
+  function handleSelectEvent(item: CatalogEvent) {
+    setSelected(item);
+    form.setValue("venueAddress", item.venueAddress);
+  }
+
   async function onSubmit(values: ConfigureFormValues) {
     if (!selected) return;
     try {
@@ -160,7 +169,7 @@ export default function NewEventPage() {
             <Card
               key={item.externalId}
               className="cursor-pointer transition-colors hover:border-foreground/30"
-              onClick={() => setSelected(item)}
+              onClick={() => handleSelectEvent(item)}
             >
               <CardContent className="flex items-center gap-4 py-4">
                 {item.imageUrl && (
@@ -218,6 +227,11 @@ export default function NewEventPage() {
                 <FormControl>
                   <Input placeholder="Av. Principal, 1000" {...field} />
                 </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  {selected.venueAddress
+                    ? "Preenchido automaticamente com o endereço que a Ticketmaster informou — confira e ajuste se precisar."
+                    : "A Ticketmaster não informou o endereço deste local — preencha manualmente."}
+                </p>
                 <FormMessage />
               </FormItem>
             )}
