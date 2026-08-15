@@ -24,6 +24,7 @@ import type { EventSummary } from "@/types/event";
 const editSchema = z.object({
   description: z.string().min(10, "Descreva o evento em pelo menos 10 caracteres"),
   venueAddress: z.string().min(1, "Obrigatório"),
+  category: z.string().max(60).optional(),
   sections: z.array(sectionSchema).min(1).max(20),
 });
 
@@ -78,6 +79,7 @@ function EditEventForm({ event }: { event: EventSummary }) {
     defaultValues: {
       description: event.description,
       venueAddress: event.venueAddress,
+      category: event.category ?? "",
       sections: initialSections,
     },
   });
@@ -98,6 +100,7 @@ function EditEventForm({ event }: { event: EventSummary }) {
       await updateMutation.mutateAsync({
         description: values.description,
         venueAddress: values.venueAddress,
+        category: values.category || "",
         ...(sectionsChanged ? { sections: sectionsToPriceCents(values.sections) } : {}),
       });
       toast.success("Evento atualizado.");
@@ -144,6 +147,20 @@ function EditEventForm({ event }: { event: EventSummary }) {
                 <FormLabel>Endereço do local</FormLabel>
                 <FormControl>
                   <Input placeholder="Av. Principal, 1000" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categoria</FormLabel>
+                <FormControl>
+                  <Input placeholder="Music, Sports, Arts & Theatre..." {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
