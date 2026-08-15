@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,21 +17,32 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        {/* Wordmark: linha perfurada em coral sob "PULSA" — referência
-            direta ao "canhoto de ingresso" do guia de marca (Conceito 2),
-            não um clipart genérico de logo. */}
-        <Link href="/" className="flex flex-col leading-none">
-          <span className="font-heading text-xl font-bold tracking-tight text-foreground">
-            PULSA
-          </span>
-          <span
+        {/* Símbolo oficial (arte final entregue pelo usuário) + wordmark
+            "PULSA" com linha perfurada em coral sob o texto — referência
+            direta ao "canhoto de ingresso" do guia de marca (Conceito 2). */}
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/pulsa-simbolo-isolado.png"
+            alt=""
             aria-hidden
-            className="mt-1 h-px w-full"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(90deg, var(--color-primary) 0 6px, transparent 6px 12px)",
-            }}
+            width={32}
+            height={32}
+            priority
+            className="h-8 w-8 shrink-0"
           />
+          <span className="flex flex-col leading-none">
+            <span className="font-heading text-xl font-bold tracking-tight text-foreground">
+              PULSA
+            </span>
+            <span
+              aria-hidden
+              className="mt-1 h-px w-full"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, var(--color-primary) 0 6px, transparent 6px 12px)",
+              }}
+            />
+          </span>
         </Link>
 
         {/* No mobile a navegação principal vive na barra inferior
