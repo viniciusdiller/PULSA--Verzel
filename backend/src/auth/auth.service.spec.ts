@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -10,7 +10,15 @@ jest.mock('bcrypt');
 
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: { user: { findUnique: jest.Mock; findUniqueOrThrow: jest.Mock } };
+  let prisma: {
+    user: {
+      findUnique: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
+      update: jest.Mock;
+    };
+    event: { count: jest.Mock };
+    ticket: { count: jest.Mock };
+  };
   let jwtService: { signAsync: jest.Mock };
   let configService: { get: jest.Mock };
 
@@ -20,6 +28,7 @@ describe('AuthService', () => {
     name: 'Organizador Padrão',
     role: Role.ORGANIZER,
     passwordHash: 'hashed-password',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
   };
 
   beforeEach(() => {
@@ -27,7 +36,10 @@ describe('AuthService', () => {
       user: {
         findUnique: jest.fn(),
         findUniqueOrThrow: jest.fn(),
+        update: jest.fn(),
       },
+      event: { count: jest.fn().mockResolvedValue(3) },
+      ticket: { count: jest.fn().mockResolvedValue(0) },
     };
     jwtService = { signAsync: jest.fn().mockResolvedValue('signed.jwt.token') };
     configService = { get: jest.fn().mockReturnValue('24h') };
@@ -40,6 +52,8 @@ describe('AuthService', () => {
 
     jest.clearAllMocks();
     prisma.user.findUnique.mockReset();
+    prisma.event.count.mockResolvedValue(3);
+    prisma.ticket.count.mockResolvedValue(0);
     jwtService.signAsync.mockResolvedValue('signed.jwt.token');
     configService.get.mockReturnValue('24h');
   });
@@ -143,8 +157,9 @@ describe('AuthService', () => {
   });
 
   describe('me', () => {
-    it('retorna os dados públicos do usuário autenticado', async () => {
+    it('retorna os dados públicos do usuário autenticado, com a métrica do papel', async () => {
       prisma.user.findUniqueOrThrow.mockResolvedValue(dbUser);
+      prisma.event.count.mockResolvedValue(3);
 
       const result = await service.me(dbUser.id);
 
@@ -153,9 +168,28 @@ describe('AuthService', () => {
         email: dbUser.email,
         name: dbUser.name,
         role: dbUser.role,
+        createdAt: dbUser.createdAt,
+        statsCount: 3,
+        statsLabel: 'Eventos publicados',
       });
-      expect(prisma.user.findUniqueOrThrow).toHaveBeenCalledWith({
-        where: { id: dbUser.id },
+      expect(prisma.event.count).toHaveBeenCalledWith({
+        where: { organizerId: dbUser.id, status: 'PUBLISHED' },
+      });
+    });
+
+    it('conta ingressos pra CUSTOMER e validações pra GATE_STAFF', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        ...dbUser,
+        role: Role.CUSTOMER,
+      });
+      prisma.ticket.count.mockResolvedValue(2);
+
+      const result = await service.me(dbUser.id);
+
+      expect(result.statsCount).toBe(2);
+      expect(result.statsLabel).toBe('Ingressos');
+      expect(prisma.ticket.count).toHaveBeenCalledWith({
+        where: { ownerId: dbUser.id },
       });
     });
 
@@ -167,6 +201,58 @@ describe('AuthService', () => {
       await expect(service.me('id-inexistente')).rejects.toThrow(
         'Record not found',
       );
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('atualiza só o nome quando nenhuma senha é enviada', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(dbUser);
+      prisma.user.update.mockResolvedValue({ ...dbUser, name: 'Novo Nome' });
+
+      const result = await service.updateProfile(dbUser.id, {
+        name: 'Novo Nome',
+      });
+
+      expect(result.name).toBe('Novo Nome');
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: dbUser.id },
+        data: { name: 'Novo Nome' },
+      });
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+    });
+
+    it('troca a senha quando a senha atual confere', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(dbUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('novo-hash');
+      prisma.user.update.mockResolvedValue(dbUser);
+
+      await service.updateProfile(dbUser.id, {
+        currentPassword: 'senha123',
+        newPassword: 'senha-nova-456',
+      });
+
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'senha123',
+        dbUser.passwordHash,
+      );
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: dbUser.id },
+        data: { passwordHash: 'novo-hash' },
+      });
+    });
+
+    it('rejeita com BadRequest quando a senha atual está errada', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(dbUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.updateProfile(dbUser.id, {
+          currentPassword: 'senha-errada',
+          newPassword: 'senha-nova-456',
+        }),
+      ).rejects.toThrow(new BadRequestException('Senha atual incorreta.'));
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 });

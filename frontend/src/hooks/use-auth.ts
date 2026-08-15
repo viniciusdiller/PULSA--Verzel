@@ -11,6 +11,7 @@ export function useAuth() {
   const isLoading = useAuthStore((state) => state.isLoading);
   const hydrate = useAuthStore((state) => state.hydrate);
   const storeLogin = useAuthStore((state) => state.login);
+  const storeUpdateUser = useAuthStore((state) => state.updateUser);
   const storeLogout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
@@ -21,10 +22,14 @@ export function useAuth() {
     storeLogin(accessToken, authUser);
   }
 
+  function updateUser(authUser: AuthUser) {
+    storeUpdateUser(authUser);
+  }
+
   function logout() {
     storeLogout();
     router.push("/login");
   }
 
-  return { user, isLoading, login, logout };
+  return { user, isLoading, login, updateUser, logout };
 }

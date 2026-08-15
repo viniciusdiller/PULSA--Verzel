@@ -1,10 +1,23 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ProfileDto } from './dto/profile.dto';
+
+const STATS_LABEL: Record<Role, string> = {
+  CUSTOMER: 'Ingressos',
+  ORGANIZER: 'Eventos publicados',
+  GATE_STAFF: 'Validações feitas',
+};
 
 @Injectable()
 export class AuthService {
@@ -51,10 +64,78 @@ export class AuthService {
     };
   }
 
-  async me(userId: string) {
+  async me(userId: string): Promise<ProfileDto> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
     });
-    return { id: user.id, email: user.email, name: user.name, role: user.role };
+
+    const statsCount = await this.countStatsForRole(userId, user.role);
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      createdAt: user.createdAt,
+      statsCount,
+      statsLabel: STATS_LABEL[user.role],
+    };
+  }
+
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<ProfileDto> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+
+    let passwordHash: string | undefined;
+    if (dto.newPassword) {
+      const currentMatches = await bcrypt.compare(
+        dto.currentPassword ?? '',
+        user.passwordHash,
+      );
+      if (!currentMatches) {
+        throw new BadRequestException('Senha atual incorreta.');
+      }
+      passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name ? { name: dto.name } : {}),
+        ...(passwordHash ? { passwordHash } : {}),
+      },
+    });
+
+    const statsCount = await this.countStatsForRole(userId, updated.role);
+
+    return {
+      id: updated.id,
+      email: updated.email,
+      name: updated.name,
+      role: updated.role,
+      createdAt: updated.createdAt,
+      statsCount,
+      statsLabel: STATS_LABEL[updated.role],
+    };
+  }
+
+  private countStatsForRole(userId: string, role: Role): Promise<number> {
+    switch (role) {
+      case Role.ORGANIZER:
+        return this.prisma.event.count({
+          where: { organizerId: userId, status: 'PUBLISHED' },
+        });
+      case Role.GATE_STAFF:
+        return this.prisma.ticket.count({
+          where: { usedByGateUserId: userId },
+        });
+      case Role.CUSTOMER:
+      default:
+        return this.prisma.ticket.count({ where: { ownerId: userId } });
+    }
   }
 }

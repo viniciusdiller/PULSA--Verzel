@@ -4,13 +4,16 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { AuthResponseDto, AuthUserDto } from './dto/auth-response.dto';
+import { AuthResponseDto } from './dto/auth-response.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ProfileDto } from './dto/profile.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -35,8 +38,23 @@ export class AuthController {
 
   @Get('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Retorna o usuário autenticado a partir do token' })
-  me(@CurrentUser() user: AuthenticatedUser): Promise<AuthUserDto> {
+  @ApiOperation({
+    summary:
+      'Retorna o perfil do usuário autenticado (dados + métrica do papel)',
+  })
+  me(@CurrentUser() user: AuthenticatedUser): Promise<ProfileDto> {
     return this.authService.me(user.id);
+  }
+
+  @Patch('me')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Atualiza nome e/ou senha do usuário autenticado',
+  })
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<ProfileDto> {
+    return this.authService.updateProfile(user.id, dto);
   }
 }

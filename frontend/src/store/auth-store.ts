@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import { clearSession, getStoredUser, saveSession, type AuthUser } from "@/lib/auth";
+import {
+  clearSession,
+  getStoredUser,
+  saveSession,
+  updateStoredUser,
+  type AuthUser,
+} from "@/lib/auth";
 
 interface AuthState {
   user: AuthUser | null;
@@ -7,6 +13,7 @@ interface AuthState {
   isHydrated: boolean;
   hydrate: () => void;
   login: (accessToken: string, user: AuthUser) => void;
+  updateUser: (user: AuthUser) => void;
   logout: () => void;
 }
 
@@ -27,6 +34,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: (accessToken, user) => {
     saveSession(accessToken, user);
     set({ user, isLoading: false, isHydrated: true });
+  },
+  updateUser: (user) => {
+    updateStoredUser(user);
+    set({ user });
   },
   logout: () => {
     clearSession();

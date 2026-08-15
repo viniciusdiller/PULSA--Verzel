@@ -15,6 +15,10 @@ export function saveSession(accessToken: string, user: AuthUser) {
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+export function updateStoredUser(user: AuthUser) {
+  window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
 export function clearSession() {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
