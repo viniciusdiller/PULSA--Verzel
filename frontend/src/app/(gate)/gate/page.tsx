@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatEventDateTime } from "@/lib/format";
 import type { GateValidationResult } from "@/types/gate";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 6;
 
 export default function GatePage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);

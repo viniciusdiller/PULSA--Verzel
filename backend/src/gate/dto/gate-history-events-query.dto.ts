@@ -13,11 +13,11 @@ export class GateHistoryEventsQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ default: 8 })
+  @ApiPropertyOptional({ default: 4 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(50)
-  pageSize?: number = 8;
+  pageSize?: number = 4;
 }

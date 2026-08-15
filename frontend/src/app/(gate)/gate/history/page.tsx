@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageLoader } from "@/components/ui/page-loader";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 4;
 
 export default function GateHistoryPage() {
   const [search, setSearch] = useState("");

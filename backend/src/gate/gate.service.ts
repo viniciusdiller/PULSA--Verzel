@@ -177,7 +177,7 @@ export class GateService {
     query: GateHistoryEventsQueryDto,
   ): Promise<GateHistoryEventsPage> {
     const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 8;
+    const pageSize = query.pageSize ?? 4;
 
     const grouped = await this.prisma.ticket.groupBy({
       by: ['eventId'],

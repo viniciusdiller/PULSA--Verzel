@@ -276,7 +276,7 @@ describe('GateService', () => {
 
       const result = await service.listValidatedEvents('gate-1', {});
 
-      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 8 });
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 4 });
       expect(prisma.event.findMany).not.toHaveBeenCalled();
     });
 
