@@ -136,3 +136,19 @@ export function useDeleteEventMutation() {
     },
   });
 }
+
+// Só disponível para eventos já CANCELED — apaga o registro de vez
+// (some até do filtro "Cancelado"), diferente de useDeleteEventMutation
+// que, com reservas existentes, cancela com estorno em vez de excluir.
+export function usePurgeEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      await apiClient.delete(`/events/${eventId}/purge`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["organizer", "events"] });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}

@@ -10,6 +10,7 @@ import {
   usePublishEventMutation,
   useUnpublishEventMutation,
   useDeleteEventMutation,
+  usePurgeEventMutation,
 } from "@/hooks/use-organizer-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,9 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
   const publishMutation = usePublishEventMutation();
   const unpublishMutation = useUnpublishEventMutation();
   const deleteMutation = useDeleteEventMutation();
+  const purgeMutation = usePurgeEventMutation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
 
   function extractErrorMessage(error: unknown): string | undefined {
     return isAxiosError(error)
@@ -74,6 +77,17 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
     } catch (error) {
       setDeleteDialogOpen(false);
       toast.error(extractErrorMessage(error) ?? "Não foi possível excluir o evento.");
+    }
+  }
+
+  async function handlePurge() {
+    try {
+      await purgeMutation.mutateAsync(eventId);
+      toast.success("Registro excluído definitivamente.");
+      router.push("/organizer");
+    } catch (error) {
+      setPurgeDialogOpen(false);
+      toast.error(extractErrorMessage(error) ?? "Não foi possível excluir o registro.");
     }
   }
 
@@ -177,6 +191,15 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
             </Button>
           </>
         )}
+        {event.status === "CANCELED" && (
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setPurgeDialogOpen(true)}
+          >
+            Excluir registro
+          </Button>
+        )}
       </div>
       {event.status === "CANCELED" && (
         <p className="mt-4 text-sm text-muted-foreground">
@@ -210,6 +233,38 @@ export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[e
                 </>
               ) : (
                 "Excluir permanentemente"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={purgeDialogOpen} onOpenChange={setPurgeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir o registro de &quot;{event.title}&quot;?</DialogTitle>
+            <DialogDescription>
+              Isso apaga o evento definitivamente da plataforma — ele some até da lista de
+              cancelados. Os clientes já foram reembolsados em saldo quando o evento foi
+              cancelado; essa exclusão é só uma limpeza de registro e não afeta o saldo deles.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPurgeDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={purgeMutation.isPending}
+              onClick={handlePurge}
+            >
+              {purgeMutation.isPending ? (
+                <>
+                  <LoaderSignalBars size="sm" className="mr-1.5" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir registro"
               )}
             </Button>
           </DialogFooter>
