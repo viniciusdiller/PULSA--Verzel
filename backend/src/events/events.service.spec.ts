@@ -69,6 +69,7 @@ describe('EventsService', () => {
       count: jest.Mock;
       findMany: jest.Mock;
       deleteMany: jest.Mock;
+      groupBy: jest.Mock;
     };
     ticket: { deleteMany: jest.Mock };
     $transaction: jest.Mock;
@@ -117,6 +118,7 @@ describe('EventsService', () => {
         count: jest.fn(),
         findMany: jest.fn(),
         deleteMany: jest.fn(),
+        groupBy: jest.fn(),
       },
       ticket: { deleteMany: jest.fn() },
       $transaction: jest.fn(async (arg: unknown) => {
@@ -416,6 +418,75 @@ describe('EventsService', () => {
           take: 5,
         }),
       );
+    });
+  });
+
+  describe('getOrganizerStats', () => {
+    it('combina eventos com e sem venda, calculando receita/ingressos por evento e os totais', async () => {
+      prisma.event.findMany.mockResolvedValue([
+        {
+          id: 'e1',
+          title: 'Show com vendas',
+          venueCity: 'São Paulo',
+          startsAt: new Date(),
+          status: EventStatus.PUBLISHED,
+          capacity: 100,
+        },
+        {
+          id: 'e2',
+          title: 'Show recém-criado, sem venda',
+          venueCity: 'Rio de Janeiro',
+          startsAt: new Date(),
+          status: EventStatus.DRAFT,
+          capacity: 50,
+        },
+      ]);
+      prisma.reservation.groupBy.mockResolvedValue([
+        { eventId: 'e1', _sum: { totalCents: 15000 }, _count: { _all: 3 } },
+      ]);
+
+      const result = await service.getOrganizerStats('organizer-1');
+
+      expect(prisma.reservation.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          by: ['eventId'],
+          where: {
+            event: { organizerId: 'organizer-1' },
+            status: ReservationStatus.PAID,
+          },
+        }),
+      );
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          eventId: 'e1',
+          revenueCents: 15000,
+          ticketsSold: 3,
+        }),
+        expect.objectContaining({
+          eventId: 'e2',
+          revenueCents: 0,
+          ticketsSold: 0,
+        }),
+      ]);
+      expect(result.totals).toEqual({
+        revenueCents: 15000,
+        ticketsSold: 3,
+        eventsCount: 2,
+      });
+    });
+
+    it('devolve totais zerados quando o organizador não tem nenhum evento', async () => {
+      prisma.event.findMany.mockResolvedValue([]);
+      prisma.reservation.groupBy.mockResolvedValue([]);
+
+      const result = await service.getOrganizerStats('organizer-1');
+
+      expect(result.items).toEqual([]);
+      expect(result.totals).toEqual({
+        revenueCents: 0,
+        ticketsSold: 0,
+        eventsCount: 0,
+      });
     });
   });
 

@@ -537,6 +537,65 @@ export class EventsService {
     };
   }
 
+  // Painel financeiro do organizador: receita e ingressos vendidos por
+  // evento. "Vendido" aqui é reserva PAGA (ReservationStatus.PAID), não
+  // status do Ticket — um evento cancelado com estorno já reverteu a
+  // reserva pra CANCELED (ver cancelWithRefund), então a receita cai
+  // sozinha sem precisar de nenhum ajuste manual aqui. groupBy só
+  // devolve eventos com pelo menos 1 reserva paga, por isso a lista de
+  // eventos é buscada à parte e os dois resultados são combinados — um
+  // evento recém-criado sem venda nenhuma ainda aparece com R$ 0,00 em
+  // vez de sumir da lista.
+  async getOrganizerStats(organizerId: string) {
+    const events = await this.prisma.event.findMany({
+      where: { organizerId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        venueCity: true,
+        startsAt: true,
+        status: true,
+        capacity: true,
+      },
+    });
+
+    const grouped = await this.prisma.reservation.groupBy({
+      by: ['eventId'],
+      where: { event: { organizerId }, status: ReservationStatus.PAID },
+      _sum: { totalCents: true },
+      _count: { _all: true },
+    });
+    const statsByEventId = new Map(grouped.map((g) => [g.eventId, g]));
+
+    const items = events.map((event) => {
+      const stat = statsByEventId.get(event.id);
+      return {
+        eventId: event.id,
+        title: event.title,
+        venueCity: event.venueCity,
+        startsAt: event.startsAt,
+        status: event.status,
+        capacity: event.capacity,
+        ticketsSold: stat?._count._all ?? 0,
+        revenueCents: stat?._sum.totalCents ?? 0,
+      };
+    });
+
+    const totals = items.reduce(
+      (acc, item) => ({
+        revenueCents: acc.revenueCents + item.revenueCents,
+        ticketsSold: acc.ticketsSold + item.ticketsSold,
+      }),
+      { revenueCents: 0, ticketsSold: 0 },
+    );
+
+    return {
+      items,
+      totals: { ...totals, eventsCount: items.length },
+    };
+  }
+
   private toSummary(event: EventWithSections) {
     const fromPriceCents =
       event.sections.length > 0
