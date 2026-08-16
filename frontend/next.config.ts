@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "s1.ticketm.net" },
       { protocol: "https", hostname: "*.ticketmaster.com" },
+      { protocol: "https", hostname: "image.tmdb.org" },
     ],
   },
 };
