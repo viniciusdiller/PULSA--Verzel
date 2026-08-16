@@ -50,7 +50,7 @@ export interface Seat {
 }
 
 export interface SeatMapResponse {
-  event: { id: string; title: string; startsAt: string };
+  event: { id: string; title: string; startsAt: string; externalSource: string };
   sections: Section[];
   seats: Seat[];
 }

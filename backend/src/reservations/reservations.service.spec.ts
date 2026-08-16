@@ -178,6 +178,22 @@ describe('ReservationsService', () => {
         SeatStatus.SOLD,
       );
     });
+
+    it('inclui externalSource no evento retornado, pro front decidir "Palco" vs. "Tela"', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'event-1',
+        status: EventStatus.PUBLISHED,
+        title: 'A Origem',
+        startsAt: futureDate(),
+        externalSource: 'TMDB',
+        sections: [],
+      });
+      prisma.seat.findMany.mockResolvedValue([]);
+
+      const result = await service.getSeatMap('event-1');
+
+      expect(result.event.externalSource).toBe('TMDB');
+    });
   });
 
   describe('holdSeat', () => {

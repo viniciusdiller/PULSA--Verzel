@@ -98,7 +98,15 @@ export class ReservationsService {
     });
 
     return {
-      event: { id: event.id, title: event.title, startsAt: event.startsAt },
+      event: {
+        id: event.id,
+        title: event.title,
+        startsAt: event.startsAt,
+        // O front usa isso só pra trocar o rótulo "Palco"/"Tela" acima
+        // do mapa de assentos conforme a fonte do evento (show vs.
+        // filme) — não precisa de mais nada do catálogo aqui.
+        externalSource: event.externalSource,
+      },
       sections: event.sections,
       seats: seatMap,
     };

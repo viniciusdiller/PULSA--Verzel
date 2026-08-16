@@ -28,11 +28,16 @@ export function SeatMap({
   disabled?: boolean;
   onSelectSeat: (seat: Seat) => void;
 }) {
+  // Filme (TMDB) não tem "palco" — é uma sala de cinema, com tela na
+  // frente. Mesmo mapa/mesma lógica de assento, só troca o rótulo pra
+  // continuar fazendo sentido pro tipo de evento.
+  const frontLabel = seatMap.event.externalSource === "TMDB" ? "Tela" : "Palco";
+
   return (
     <div className="w-full">
       <div className="mx-auto mb-10 h-2 w-2/3 rounded-full bg-muted" />
       <p className="mb-8 text-center text-xs tracking-[0.3em] text-muted-foreground uppercase">
-        Palco
+        {frontLabel}
       </p>
 
       <div className="space-y-10">
