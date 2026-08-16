@@ -1,0 +1,22 @@
+name: Keep Render backend awake
+
+# O plano gratuito do Render hiberna o serviço depois de ~15min sem
+# tráfego, e a primeira requisição depois disso demora 30-50s pra
+# "acordar" (cold start) — ruim justamente na hora em que alguém está
+# avaliando o projeto pela primeira vez. Esse workflow bate no health
+# check a cada 10min (margem segura abaixo dos ~15min de hibernação) só
+# pra manter o serviço quente. Não é 100% garantido: o agendamento do
+# GitHub Actions pode atrasar alguns minutos em horários de pico da
+# plataforma, então um cold start ocasional ainda pode acontecer — mas
+# a frequência cai drasticamente em relação a não ter nada rodando.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pingar /api/health do backend
+        run: curl -fsS --max-time 55 https://projeto-de-desenvolvimento-verzel.onrender.com/api/health

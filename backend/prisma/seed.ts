@@ -234,7 +234,7 @@ async function main() {
   );
 
   // QR_SIGNING_SECRET precisa estar no ambiente de quem roda o seed — em
-  // produção (Railway) já vem do próprio processo; localmente, rodar via
+  // produção (Render) já vem do próprio processo; localmente, rodar via
   // `npm run db:seed` (que agora delega pra `prisma db seed`, que carrega
   // o .env automaticamente).
   const secret = process.env.QR_SIGNING_SECRET;

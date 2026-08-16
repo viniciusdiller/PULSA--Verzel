@@ -23,6 +23,94 @@ O `seed` já publica 2 eventos e emite 3 ingressos de demonstração (um válido
 - **Frontend**: Next.js 16 (App Router) + Tailwind v4 + shadcn/ui, TanStack Query, Zustand, React Hook Form + Zod, `motion` (animações), `next-themes` (modo claro/escuro).
 - **Identidade visual**: PULSA — paleta coral/violeta/lime, Space Grotesk + Manrope. Ver `docs/ARCHITECTURE.md`.
 
+## Requisitos do desafio — checklist
+
+Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, pra facilitar a avaliação sem precisar garimpar o código.
+
+### Front-end
+
+- ✅ Navegação e busca por eventos publicados (shows e filmes), com data, local e preço — home (`frontend/src/app/(public)/page.tsx`) + busca/filtro por cidade e categoria (`frontend/src/components/home/event-filters.tsx`).
+- ✅ Criação e gerenciamento de eventos pelo organizador — busca no catálogo → configura seções/preços → publica/despublica/edita/exclui (`frontend/src/app/(organizer)/organizer/`).
+- ✅ Fluxo de reserva com **mapa de assentos interativo** (cinema/teatro) — `frontend/src/components/seatmap/seat-map.tsx`, com hold e contador regressivo.
+- ✅ Pagamento simulado com confirmação **e** recusa — dois cartões de teste determinísticos (ver acima), telas de resultado para os dois casos.
+- ✅ "Meus ingressos" com QR code — `frontend/src/app/(customer)/my-tickets/page.tsx`, QR renderizado com `qrcode.react` a partir de um token assinado.
+- ✅ Portaria com os 4 desfechos (válido, inválido, já utilizado, evento errado) — `frontend/src/components/gate/gate-result.tsx`, backend em `backend/src/gate/gate.service.ts`.
+- ✅ Leitura de QR pela câmera + digitação manual como alternativa — `frontend/src/components/gate/qr-scanner.tsx` (câmera) e aba "Manual" em `frontend/src/app/(gate)/gate/page.tsx`.
+
+### Back-end
+
+- ✅ Integração com API externa — **Ticketmaster Discovery e TMDb, as duas** (`backend/src/catalog/`), unificadas por uma fonte comum (`source: 'TICKETMASTER' | 'TMDB'`).
+- ✅ Autenticação com 3 papéis (Organizador, Cliente, Portaria) — `enum Role` no Prisma + guards/decorators (`@Roles()`, `RolesGuard`).
+- ✅ Armazenamento de eventos, reservas e ingressos — schema Prisma completo (`User`, `Event`, `Section`, `Seat`, `Reservation`, `Ticket`).
+- ✅ Garantia de que o mesmo lugar não é vendido duas vezes — lock pessimista (`pg_advisory_xact_lock`) **+** índice único parcial no banco como rede de segurança real (`backend/src/reservations/reservations.service.ts`, migration manual).
+- ✅ QR não-forjável — JWT HS256 com secret dedicado, algoritmo fixado na verificação contra alg-confusion (`backend/src/tickets/utils/ticket-signing.util.ts`).
+- ✅ Compartilhamento de ingresso via link gerado pela aplicação — `shareSlug` opaco, rota pública `GET /tickets/:shareSlug` / `frontend/.../t/[shareSlug]`.
+- ✅ Validação de portaria impede validar o mesmo ingresso duas vezes — update condicional atômico (`WHERE status='VALID'`, checa linhas afetadas) em `gate.service.ts`.
+
+### Não funcionais
+
+- ✅ README detalhado com passo a passo de setup e banco de dados (esta página).
+- ✅ Dados semeados: 1 organizador, 2 clientes, 1 portaria, eventos publicados com ingressos disponíveis e prontos pros 4 desfechos da portaria (ver seed acima).
+- ✅ Aplicação publicada (Render + Vercel + Neon, links acima).
+- ✅ Seção "Known issues" abaixo, e "O que não foi implementado e por quê".
+
+### Opcionais implementados
+
+- ✅ Busca e filtro de eventos (termo, cidade, categoria).
+- ✅ Painel do organizador (CRUD completo — criar, editar, publicar/despublicar, excluir; painel financeiro/analítico ficou de fora, ver "O que não foi implementado").
+- ✅ Cancelamento com devolução ao estoque (reserva em hold antes do pagamento).
+- ✅ Mapa de assentos "em tempo real" via polling de 5s.
+- ✅ Docker Compose (Postgres local persistente).
+- ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (Jest) e 42 testes de lógica/componente no frontend (Vitest + Testing Library) (ver "Testes" abaixo e `AI_USAGE.md`).
+- ✅ Aplicação publicada.
+
+### Todas as funcionalidades do produto
+
+Lista mais completa do que dá pra fazer no site, além do que os requisitos do desafio exigem — inclui coisas de conta/perfil que não estão em nenhuma seção acima.
+
+**Conta e perfil** (`/profile`, qualquer papel logado)
+- Trocar nome de exibição.
+- Trocar senha (pede a senha atual antes).
+- Ver desde quando é usuário e um contador rápido (ingressos pro cliente, eventos pro organizador).
+- Sair da sessão neste dispositivo.
+
+**Saldo** (só para clientes)
+- Créditos em saldo (`balanceCents`) só existem por um motivo: um organizador cancelou um evento com ingressos já pagos. Nesse caso, todo cliente com reserva paga naquele evento é reembolsado automaticamente em saldo da plataforma (não tem devolução via cartão simulada) e recebe um aviso na próxima vez que abrir o site.
+- No checkout, se o cliente tiver saldo, ele é aplicado **primeiro**, cobrindo o quanto der do valor da reserva — só o restante (se sobrar algo) vai pro cartão. Se o saldo cobrir o total, o pagamento é aprovado direto, sem nem simular cartão.
+- Saldo só aparece pra quem realmente pode ter saldo (cliente) — organizador e portaria não veem esse campo, pra não mostrar "R$ 0,00" sem sentido.
+
+**Home e catálogo**
+- Hero do evento mais próximo entre os publicados (heurística real, não sorteio).
+- Carrossel de shows/filmes em destaque (curadoria manual do organizador, até 4 de cada, contados separadamente).
+- Busca por nome, filtro por cidade e por categoria — cidades/categorias calculadas a partir dos eventos reais existentes, não uma lista fixa.
+- Seção "Filmes" separada, com seu próprio destaque/hero e grade, sem misturar com "Eventos em cartaz" (que é só show).
+- Tema claro/escuro, com preferência salva entre sessões.
+
+**Organizador**
+- Busca no catálogo real da Ticketmaster (shows) e do TMDb (filmes), com prefill de nome/local/data/sinopse quando disponível.
+- Criar evento com seções/preços/fileiras configuráveis, editar, publicar/despublicar, destacar (com limite de 4 por fonte), excluir.
+- Cancelar um evento publicado com reservas pagas dispara o reembolso em saldo automaticamente pra todo cliente afetado (ver "Saldo" acima) — se não há nenhuma reserva ainda, o evento é apagado direto em vez de só marcado como cancelado.
+
+**Reserva e pagamento**
+- Mapa de assentos interativo por seção, com o mapa atualizando sozinho a cada 5s (outro cliente reservando aparece quase em tempo real).
+- Hold de 7 minutos com contador regressivo visível; cancelamento manual do hold antes de pagar, sem precisar esperar o tempo todo acabar.
+- Pagamento simulado (cartão + saldo, ver acima), com tela de aprovado e de recusado.
+- Rótulo acima do mapa muda de "Palco" pra "Tela" automaticamente quando o evento é um filme (fonte TMDb).
+
+**Ingressos**
+- QR code assinado (JWT) por ingresso, mais um código curto de 6 dígitos como alternativa de digitação.
+- Link de compartilhamento público (`/t/:shareSlug`) — quem recebe o link vê o QR sem precisar de login.
+- "Meus ingressos" agrupado por evento (abas Ativos/Passados), com paginação dentro de cada evento quando passa de 4 ingressos.
+
+**Portaria**
+- Leitura por câmera ou digitação manual do código curto.
+- 4 desfechos com tela cheia colorida por status: válido, inválido, já utilizado (mostra quando/quem validou antes), evento errado (mostra pra qual evento o ingresso é válido).
+- Busca por nome no seletor de evento.
+- Histórico dos ingressos que aquele funcionário já validou, agrupado por evento, com paginação.
+
+**Navegação**
+- Barra inferior fixa no mobile, com destaque do item ativo e atalhos por papel (cliente/organizador/portaria têm itens diferentes).
+
 ## Rodando localmente
 
 ### Backend
@@ -46,6 +134,22 @@ npm install
 npm run dev              # http://localhost:3000
 ```
 
+## Testes
+
+Nenhum dos dois lados precisa do Postgres/Docker rodando pra testar — o backend usa mocks do Prisma, o frontend não bate em API nenhuma.
+
+```bash
+cd backend
+npm test                 # 227 testes unitários (Jest)
+npm run test:e2e         # 4 testes e2e (sobem a aplicação de verdade, ainda com Prisma mockado)
+```
+
+```bash
+cd frontend
+npm test                 # 42 testes de lógica e componente (Vitest + Testing Library)
+npm run test:watch       # mesma coisa, mas observando arquivos — útil enquanto se escreve um teste novo
+```
+
 ## Deploy (Render + backend, Vercel + frontend)
 
 **O app já está no ar:**
@@ -54,9 +158,9 @@ npm run dev              # http://localhost:3000
 - **Backend**: https://projeto-de-desenvolvimento-verzel.onrender.com/api
 - **Swagger**: https://projeto-de-desenvolvimento-verzel.onrender.com/api-docs
 
-> O backend roda no plano gratuito do Render, que hiberna depois de ~15 min sem tráfego — a primeira requisição após esse período pode levar 30–50s pra "acordar" o serviço (cold start). Requisições seguintes respondem normalmente. É a troca aceita por não ter custo.
+> **Sobre o cold start:** o backend roda no plano gratuito do Render, que hiberna depois de ~15 min sem tráfego — a primeira requisição após esse período pode levar 30–50s pra "acordar" o serviço. Pedimos desculpas por esse atraso caso você caia bem nesse momento; é uma limitação real do plano gratuito, não um bug. Pra reduzir a chance disso acontecer durante a avaliação, um workflow do GitHub Actions (`.github/workflows/keep-alive.yml`) faz um ping em `/api/health` a cada 10 minutos, mantendo o serviço quente na maior parte do tempo — não é 100% garantido (o agendamento do Actions pode atrasar em horários de pico), mas reduz bastante a frequência do cold start. Requisições depois da primeira respondem normalmente.
 
-O plano original era Railway pro backend (é o que a Ticketmaster/Discovery e o restante da arquitetura sempre previram), mas o trial gratuito do Railway acabou no meio do desenvolvimento. **Render (backend) + Neon (Postgres gerenciado)** foi a alternativa gratuita mais próxima — mesma lógica de deploy, outro provedor.
+O plano original era Railway pro backend, mas o trial gratuito acabou no meio do desenvolvimento. **Render (backend) + Neon (Postgres gerenciado)** foi a alternativa gratuita mais próxima — mesma lógica de deploy, outro provedor (histórico completo da migração em `docs/ARCHITECTURE.md`).
 
 ### Neon (Postgres)
 
@@ -109,8 +213,7 @@ O plano original era Railway pro backend (é o que a Ticketmaster/Discovery e o 
 ## Known issues
 
 - O QR renderizado em "Meus ingressos" sempre usa fundo branco fixo, mesmo no modo escuro — é proposital: leitores de QR precisam de alto contraste, então essa é a única superfície que não segue o tema.
-- **`TICKETMASTER_API_KEY` ainda não está configurada em produção (Render)** — a chave já foi obtida e testada com sucesso localmente (busca real no catálogo funcionando), só falta adicioná-la nas env vars do serviço no Render e clicar em "Save, rebuild, and deploy". Até lá, `GET /catalog/events/search` em produção retorna `503` com a mensagem "Catálogo indisponível: TICKETMASTER_API_KEY não configurada" — é uma falha graciosa e prevista (ver `backend/src/catalog/catalog.service.ts`), não um crash. Todo o resto da plataforma funciona normalmente, incluindo os eventos já publicados pelo seed, que usam uma fixture local capturada de uma resposta real da Ticketmaster (`backend/prisma/seed.ts`) e não dependem da API estar acessível.
-- **`TMDB_API_KEY` ainda não está configurada em produção (Render)** — mesma situação do item acima, só que pra fonte de filmes. A chave já foi obtida (gratuita, em [themoviedb.org](https://www.themoviedb.org/settings/api)) e testada com sucesso localmente: busca real de filme, seleção com prefill de sinopse/categoria, criação e publicação de um evento de filme, que apareceu corretamente na home numa seção de categoria nova. Até a chave ser configurada no Render, `GET /catalog/events?source=TMDB` em produção retorna `503` ("Catálogo indisponível: TMDB_API_KEY não configurada") — mesma falha graciosa e prevista do item acima, não um crash.
+- Se por algum motivo `TICKETMASTER_API_KEY` ou `TMDB_API_KEY` faltarem no ambiente (ex. reproduzindo o deploy do zero), a busca no catálogo falha de forma graciosa: `GET /catalog/events/search` retorna `503` com uma mensagem clara em vez de quebrar (ver `backend/src/catalog/catalog.service.ts`). Todo o resto da plataforma continua funcionando normalmente mesmo sem essas chaves, incluindo os 2 eventos mínimos que o seed cria à mão (sem depender de nenhuma API externa) só pra portaria e "Meus ingressos" terem o que mostrar de cara. Os demais eventos do catálogo (Coachella, Matrix, etc.) foram publicados de verdade através do fluxo do organizador, batendo nas APIs reais — ver "Todas as funcionalidades do produto" abaixo.
 
 ## Documentação de uso de IA
 
