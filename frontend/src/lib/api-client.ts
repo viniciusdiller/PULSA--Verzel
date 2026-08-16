@@ -6,7 +6,7 @@ export const apiClient = axios.create({
 
 // Autenticação via localStorage + header Authorization (não cookie
 // httpOnly cross-domain) — trade-off documentado no README: mais simples
-// de acertar entre domínios Vercel/Railway dentro do prazo, ao custo de
+// de acertar entre domínios Vercel/Render dentro do prazo, ao custo de
 // uma exposição maior a XSS do que um cookie teria.
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
