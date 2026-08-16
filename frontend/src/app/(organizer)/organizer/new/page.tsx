@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SectionsFieldArray } from "@/components/organizer/sections-field-array";
 import { sectionSchema, sectionsToPriceCents } from "@/lib/event-section-schema";
 import { EVENTS_MAX_CAPACITY } from "@/lib/event-constants";
@@ -31,7 +32,7 @@ const configureSchema = z.object({
   venueName: z.string().min(1, "Obrigatório"),
   venueCity: z.string().min(1, "Obrigatório"),
   venueAddress: z.string().min(1, "Obrigatório"),
-  startsAt: z.string().min(1, "Obrigatório"),
+  startsAt: z.date({ required_error: "Obrigatório", invalid_type_error: "Obrigatório" }),
   category: z.string().max(60).optional(),
   sections: z.array(sectionSchema).min(1).max(20),
 });
@@ -42,18 +43,6 @@ const SOURCE_LABEL: Record<CatalogSource, string> = {
   TICKETMASTER: "Ticketmaster",
   TMDB: "TMDb",
 };
-
-// <input type="datetime-local"> espera "AAAA-MM-DDTHH:mm" em horário
-// local (sem timezone) — convertemos pros dois sentidos aqui. `new
-// Date(iso)` já entende ISO com timezone (o que vem do catálogo) e
-// `new Date(datetimeLocalValue)` já entende esse formato como horário
-// local (não UTC) — não precisa de lib de data pra isso.
-function toDatetimeLocalValue(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 // A mensagem antiga era fixa e sempre culpava a TICKETMASTER_API_KEY,
 // mesmo quando a causa real era outra (rate-limit do nosso próprio
@@ -95,7 +84,10 @@ export default function NewEventPage() {
       venueName: "",
       venueCity: "",
       venueAddress: "",
-      startsAt: "",
+      // Sem valor inicial de verdade (organizador escolhe no calendário)
+      // — cast necessário porque o schema exige um Date de verdade
+      // (startsAt é obrigatório), não porque o campo já nasce preenchido.
+      startsAt: undefined as unknown as Date,
       category: "",
       sections: [{ name: "Pista", priceReais: 50, rowsCount: 5, seatsPerRow: 10 }],
     },
@@ -111,7 +103,7 @@ export default function NewEventPage() {
     form.setValue("venueName", item.venueName);
     form.setValue("venueCity", item.venueCity);
     form.setValue("venueAddress", item.venueAddress);
-    form.setValue("startsAt", item.startsAt ? toDatetimeLocalValue(item.startsAt) : "");
+    form.setValue("startsAt", item.startsAt ? new Date(item.startsAt) : (undefined as unknown as Date));
     form.setValue("category", item.category ?? "");
   }
 
@@ -132,7 +124,7 @@ export default function NewEventPage() {
         title: selected.title,
         description: values.description,
         imageUrl: selected.imageUrl ?? undefined,
-        startsAt: new Date(values.startsAt).toISOString(),
+        startsAt: values.startsAt.toISOString(),
         venueName: values.venueName,
         venueCity: values.venueCity,
         venueAddress: values.venueAddress,
@@ -295,7 +287,7 @@ export default function NewEventPage() {
               <FormItem>
                 <FormLabel>{selected.source === "TMDB" ? "Data e hora da sessão" : "Data e hora"}</FormLabel>
                 <FormControl>
-                  <Input type="datetime-local" {...field} />
+                  <DateTimePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
                 {!selected.startsAt && (
                   <p className="text-xs text-muted-foreground">
