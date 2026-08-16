@@ -64,6 +64,53 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 - ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (Jest) e 42 testes de lógica/componente no frontend (Vitest + Testing Library) (ver "Testes" abaixo e `AI_USAGE.md`).
 - ✅ Aplicação publicada.
 
+### Todas as funcionalidades do produto
+
+Lista mais completa do que dá pra fazer no site, além do que os requisitos do desafio exigem — inclui coisas de conta/perfil que não estão em nenhuma seção acima.
+
+**Conta e perfil** (`/profile`, qualquer papel logado)
+- Trocar nome de exibição.
+- Trocar senha (pede a senha atual antes).
+- Ver desde quando é usuário e um contador rápido (ingressos pro cliente, eventos pro organizador).
+- Sair da sessão neste dispositivo.
+
+**Saldo** (só para clientes)
+- Créditos em saldo (`balanceCents`) só existem por um motivo: um organizador cancelou um evento com ingressos já pagos. Nesse caso, todo cliente com reserva paga naquele evento é reembolsado automaticamente em saldo da plataforma (não tem devolução via cartão simulada) e recebe um aviso na próxima vez que abrir o site.
+- No checkout, se o cliente tiver saldo, ele é aplicado **primeiro**, cobrindo o quanto der do valor da reserva — só o restante (se sobrar algo) vai pro cartão. Se o saldo cobrir o total, o pagamento é aprovado direto, sem nem simular cartão.
+- Saldo só aparece pra quem realmente pode ter saldo (cliente) — organizador e portaria não veem esse campo, pra não mostrar "R$ 0,00" sem sentido.
+
+**Home e catálogo**
+- Hero do evento mais próximo entre os publicados (heurística real, não sorteio).
+- Carrossel de shows/filmes em destaque (curadoria manual do organizador, até 4 de cada, contados separadamente).
+- Busca por nome, filtro por cidade e por categoria — cidades/categorias calculadas a partir dos eventos reais existentes, não uma lista fixa.
+- Seção "Filmes" separada, com seu próprio destaque/hero e grade, sem misturar com "Eventos em cartaz" (que é só show).
+- Tema claro/escuro, com preferência salva entre sessões.
+
+**Organizador**
+- Busca no catálogo real da Ticketmaster (shows) e do TMDb (filmes), com prefill de nome/local/data/sinopse quando disponível.
+- Criar evento com seções/preços/fileiras configuráveis, editar, publicar/despublicar, destacar (com limite de 4 por fonte), excluir.
+- Cancelar um evento publicado com reservas pagas dispara o reembolso em saldo automaticamente pra todo cliente afetado (ver "Saldo" acima) — se não há nenhuma reserva ainda, o evento é apagado direto em vez de só marcado como cancelado.
+
+**Reserva e pagamento**
+- Mapa de assentos interativo por seção, com o mapa atualizando sozinho a cada 5s (outro cliente reservando aparece quase em tempo real).
+- Hold de 7 minutos com contador regressivo visível; cancelamento manual do hold antes de pagar, sem precisar esperar o tempo todo acabar.
+- Pagamento simulado (cartão + saldo, ver acima), com tela de aprovado e de recusado.
+- Rótulo acima do mapa muda de "Palco" pra "Tela" automaticamente quando o evento é um filme (fonte TMDb).
+
+**Ingressos**
+- QR code assinado (JWT) por ingresso, mais um código curto de 6 dígitos como alternativa de digitação.
+- Link de compartilhamento público (`/t/:shareSlug`) — quem recebe o link vê o QR sem precisar de login.
+- "Meus ingressos" agrupado por evento (abas Ativos/Passados), com paginação dentro de cada evento quando passa de 4 ingressos.
+
+**Portaria**
+- Leitura por câmera ou digitação manual do código curto.
+- 4 desfechos com tela cheia colorida por status: válido, inválido, já utilizado (mostra quando/quem validou antes), evento errado (mostra pra qual evento o ingresso é válido).
+- Busca por nome no seletor de evento.
+- Histórico dos ingressos que aquele funcionário já validou, agrupado por evento, com paginação.
+
+**Navegação**
+- Barra inferior fixa no mobile, com destaque do item ativo e atalhos por papel (cliente/organizador/portaria têm itens diferentes).
+
 ## Rodando localmente
 
 ### Backend
@@ -166,7 +213,7 @@ O plano original era Railway pro backend, mas o trial gratuito acabou no meio do
 ## Known issues
 
 - O QR renderizado em "Meus ingressos" sempre usa fundo branco fixo, mesmo no modo escuro — é proposital: leitores de QR precisam de alto contraste, então essa é a única superfície que não segue o tema.
-- Se por algum motivo `TICKETMASTER_API_KEY` ou `TMDB_API_KEY` faltarem no ambiente (ex. reproduzindo o deploy do zero), a busca no catálogo falha de forma graciosa: `GET /catalog/events/search` retorna `503` com uma mensagem clara em vez de quebrar (ver `backend/src/catalog/catalog.service.ts`). Todo o resto da plataforma continua funcionando normalmente mesmo sem essas chaves, incluindo os eventos já publicados pelo seed, que usam fixtures locais capturadas de respostas reais da Ticketmaster/TMDb (`backend/prisma/seed.ts`) e não dependem de nenhuma API externa estar acessível.
+- Se por algum motivo `TICKETMASTER_API_KEY` ou `TMDB_API_KEY` faltarem no ambiente (ex. reproduzindo o deploy do zero), a busca no catálogo falha de forma graciosa: `GET /catalog/events/search` retorna `503` com uma mensagem clara em vez de quebrar (ver `backend/src/catalog/catalog.service.ts`). Todo o resto da plataforma continua funcionando normalmente mesmo sem essas chaves, incluindo os 2 eventos mínimos que o seed cria à mão (sem depender de nenhuma API externa) só pra portaria e "Meus ingressos" terem o que mostrar de cara. Os demais eventos do catálogo (Coachella, Matrix, etc.) foram publicados de verdade através do fluxo do organizador, batendo nas APIs reais — ver "Todas as funcionalidades do produto" abaixo.
 
 ## Documentação de uso de IA
 
