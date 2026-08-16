@@ -34,7 +34,10 @@ export default function EventsListPage() {
     debouncedSearch,
     selectedCity ?? undefined,
   );
-  const { data: featuredEvents } = useFeaturedEventsQuery();
+  // Só shows no topo (carrossel/hero de show) — o equivalente pra filme
+  // (FeaturedCarousel/HeroEvent escopados a TMDB) mora dentro de
+  // MoviesSection, lá embaixo. Ver split showEvents/movieEvents abaixo.
+  const { data: featuredEvents } = useFeaturedEventsQuery("TICKETMASTER");
   const { user } = useAuth();
 
   const isBrowsingUnfiltered = !debouncedSearch && !selectedCity && !selectedCategory;
@@ -62,14 +65,6 @@ export default function EventsListPage() {
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   }, [allData]);
 
-  const heroEvent = useMemo(() => {
-    // A curadoria manual (featuredEvents) tem prioridade sobre a
-    // heurística de "evento mais próximo" — só cai pro heurístico quando
-    // nenhum organizador destacou nada ainda.
-    if (!isBrowsingUnfiltered || (featuredEvents && featuredEvents.length > 0)) return null;
-    return allData?.items[0] ?? null;
-  }, [allData, isBrowsingUnfiltered, featuredEvents]);
-
   // Filmes (TMDB) ficam separados dos shows (Ticketmaster) na parte de
   // categorias: as categorias de show (Music, Sports, Arts & Theatre...)
   // aparecem primeiro, e só depois, na parte final da página, vem a
@@ -83,6 +78,16 @@ export default function EventsListPage() {
       movieEvents: items.filter((event) => event.externalSource === "TMDB"),
     };
   }, [allData]);
+
+  const heroEvent = useMemo(() => {
+    // A curadoria manual (featuredEvents) tem prioridade sobre a
+    // heurística de "evento mais próximo" — só cai pro heurístico quando
+    // nenhum organizador destacou nada ainda. Pool restrito a shows —
+    // filme nunca aparece no hero do topo (tem o dele próprio, dentro
+    // de MoviesSection).
+    if (!isBrowsingUnfiltered || (featuredEvents && featuredEvents.length > 0)) return null;
+    return showEvents[0] ?? null;
+  }, [showEvents, isBrowsingUnfiltered, featuredEvents]);
 
   const isLoading = allLoading || filteredLoading;
 

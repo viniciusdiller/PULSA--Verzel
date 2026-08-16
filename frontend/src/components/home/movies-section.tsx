@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { EventCarousel } from "@/components/events/event-carousel";
 import { EventFilters } from "@/components/home/event-filters";
+import { FeaturedCarousel } from "@/components/home/featured-carousel";
+import { HeroEvent } from "@/components/home/hero-event";
+import { useFeaturedEventsQuery } from "@/hooks/use-events";
 import { Input } from "@/components/ui/input";
 import type { EventSummary } from "@/types/event";
 
@@ -13,6 +16,13 @@ import type { EventSummary } from "@/types/event";
 // filme pode aparecer aqui E de novo na seção da própria categoria dele
 // lá embaixo (ex. "Ação") — não é duplicidade, são dois recortes
 // diferentes da mesma lista.
+//
+// Também recria, só que escopado a filme, o mesmo tratamento de topo da
+// home (FeaturedCarousel + HeroEvent heurístico de fallback): a vitrine
+// "Filmes em destaque" tem seu próprio teto de 4 no backend,
+// independente do teto de 4 dos shows (EventsService.feature agora
+// escopa a contagem por externalSource) — destacar 4 filmes nunca
+// consome vaga de show, e vice-versa.
 //
 // Busca é 100% client-side (filtra o texto no título, sem chamada de
 // rede) — diferente do campo de busca da seção de cima, que bate na
@@ -28,6 +38,18 @@ export function MoviesSection({ events }: { events: EventSummary[] }) {
     () => events.filter((event) => event.externalSource === "TMDB"),
     [events],
   );
+
+  const { data: featuredMovies } = useFeaturedEventsQuery("TMDB");
+
+  const movieHero = useMemo(() => {
+    // Mesma lógica do hero heurístico do topo da home, só que restrita a
+    // filme: só entra quando nenhum organizador destacou nenhum filme
+    // ainda, e usa o próprio `movies` (já vem ordenado por startsAt asc
+    // do backend) como pool — "o filme mais próximo entre os
+    // publicados", não um sorteio.
+    if (featuredMovies && featuredMovies.length > 0) return null;
+    return movies[0] ?? null;
+  }, [movies, featuredMovies]);
 
   const cityOptions = useMemo(() => {
     const counts = new Map<string, number>();
@@ -62,38 +84,45 @@ export function MoviesSection({ events }: { events: EventSummary[] }) {
   if (movies.length === 0) return null;
 
   return (
-    <div>
-      <h2 className="font-heading mb-6 text-2xl font-bold">Filmes</h2>
-
-      <div className="mb-6 space-y-3">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por título do filme..."
-          className="max-w-sm"
-        />
-        <EventFilters
-          cities={cityOptions}
-          categories={categoryOptions}
-          selectedCity={selectedCity}
-          selectedCategory={selectedCategory}
-          searchTerm={search}
-          onChangeCity={setSelectedCity}
-          onChangeCategory={setSelectedCategory}
-          onClearSearch={() => setSearch("")}
-          onClearAll={() => {
-            setSearch("");
-            setSelectedCity(null);
-            setSelectedCategory(null);
-          }}
-        />
-      </div>
-
-      {filteredMovies.length > 0 ? (
-        <EventCarousel events={filteredMovies} />
-      ) : (
-        <p className="text-muted-foreground">Nenhum filme encontrado para esse filtro.</p>
+    <div className="space-y-8">
+      {featuredMovies && featuredMovies.length > 0 && (
+        <FeaturedCarousel events={featuredMovies} label="Filmes em destaque" />
       )}
+      {movieHero && <HeroEvent event={movieHero} />}
+
+      <div>
+        <h2 className="font-heading mb-6 text-2xl font-bold">Todos os filmes</h2>
+
+        <div className="mb-6 space-y-3">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por título do filme..."
+            className="max-w-sm"
+          />
+          <EventFilters
+            cities={cityOptions}
+            categories={categoryOptions}
+            selectedCity={selectedCity}
+            selectedCategory={selectedCategory}
+            searchTerm={search}
+            onChangeCity={setSelectedCity}
+            onChangeCategory={setSelectedCategory}
+            onClearSearch={() => setSearch("")}
+            onClearAll={() => {
+              setSearch("");
+              setSelectedCity(null);
+              setSelectedCategory(null);
+            }}
+          />
+        </div>
+
+        {filteredMovies.length > 0 ? (
+          <EventCarousel events={filteredMovies} />
+        ) : (
+          <p className="text-muted-foreground">Nenhum filme encontrado para esse filtro.</p>
+        )}
+      </div>
     </div>
   );
 }
