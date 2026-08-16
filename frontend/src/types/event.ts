@@ -25,6 +25,10 @@ export interface EventSummary {
   status: EventStatus;
   category: string | null;
   featured: boolean;
+  // "TICKETMASTER" | "TMDB" (ou qualquer string — o backend não valida
+  // com @IsEnum, ver create-event.dto.ts) — usado pra distinguir filmes
+  // de shows na home (ver home/movies-section.tsx).
+  externalSource: string;
   sections: Section[];
   fromPriceCents: number;
 }

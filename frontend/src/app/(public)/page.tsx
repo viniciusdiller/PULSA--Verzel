@@ -8,6 +8,7 @@ import { EventCarousel } from "@/components/events/event-carousel";
 import { HeroEvent } from "@/components/home/hero-event";
 import { FeaturedCarousel } from "@/components/home/featured-carousel";
 import { CategorySections } from "@/components/home/category-sections";
+import { MoviesSection } from "@/components/home/movies-section";
 import { EventFilters } from "@/components/home/event-filters";
 import { TrustSection } from "@/components/home/trust-section";
 import { CtaBand } from "@/components/home/cta-band";
@@ -130,6 +131,8 @@ export default function EventsListPage() {
           </p>
         )}
       </div>
+
+      {isBrowsingUnfiltered && allData && <MoviesSection events={allData.items} />}
 
       {isBrowsingUnfiltered && allData && <CategorySections events={allData.items} />}
 
