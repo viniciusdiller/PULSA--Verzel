@@ -109,7 +109,7 @@ export function DateTimePicker({
           <SelectTrigger className="w-[68px]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-60">
             {HOURS.map((h) => (
               <SelectItem key={h} value={h}>
                 {h}
