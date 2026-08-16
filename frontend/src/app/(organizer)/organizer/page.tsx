@@ -102,9 +102,9 @@ export default function OrganizerDashboardPage() {
               className="flex items-center justify-between rounded-md border border-border/60 p-4 transition-colors hover:border-foreground/30"
             >
               <Link href={`/organizer/${event.id}`} className="min-w-0 flex-1 hover:cursor-pointer">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex items-start justify-between gap-2">
                   <h2 className="font-heading text-lg">{event.title}</h2>
-                  <Badge variant={STATUS_VARIANT[event.status]}>
+                  <Badge variant={STATUS_VARIANT[event.status]} className="mt-1 shrink-0">
                     {STATUS_LABEL[event.status]}
                   </Badge>
                 </div>
