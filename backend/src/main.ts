@@ -23,7 +23,7 @@ async function bootstrap() {
   );
 
   // Necessário para o Throttler (e qualquer coisa baseada em req.ip) enxergar
-  // o IP real do cliente atrás do proxy reverso do Railway, em vez do IP
+  // o IP real do cliente atrás do proxy reverso do Render, em vez do IP
   // interno do load balancer — sem isso o rate-limit fica por IP único.
   app.set('trust proxy', 1);
 
