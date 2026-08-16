@@ -50,8 +50,10 @@ describe('mapTicketmasterEvent', () => {
 
     expect(mapTicketmasterEvent(raw)).toEqual({
       externalId: 'tm-123',
+      source: 'TICKETMASTER',
       title: 'Show Incrível',
       imageUrl: 'https://img/1',
+      description: null,
       startsAt: '2026-12-20T22:00:00Z',
       venueName: 'Arena X',
       venueCity: 'São Paulo',

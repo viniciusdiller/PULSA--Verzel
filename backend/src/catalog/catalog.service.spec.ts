@@ -142,7 +142,7 @@ describe('CatalogService', () => {
 
       expect(result.externalId).toBe('tm-1');
       expect(cache.set).toHaveBeenCalledWith(
-        'catalog:event:tm-1',
+        'catalog:event:TICKETMASTER:tm-1',
         result,
         5 * 60 * 1000,
       );
@@ -183,6 +183,90 @@ describe('CatalogService', () => {
 
       await expect(service.getById('tm-1')).rejects.toThrow(
         ServiceUnavailableException,
+      );
+    });
+  });
+
+  describe('search (source: TMDB)', () => {
+    it('busca na API do TMDb, mapeia os filmes e grava no cache com chave própria', async () => {
+      fetchMock.mockResolvedValue(
+        fakeResponse({
+          jsonBody: {
+            results: [{ id: 27205, title: 'A Origem', genre_ids: [28] }],
+            page: 1,
+            total_pages: 5,
+          },
+        }),
+      );
+
+      const result = await service.search({
+        source: 'TMDB',
+        keyword: 'origem',
+        page: 0,
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].externalId).toBe('tmdb:27205');
+      expect(result.items[0].source).toBe('TMDB');
+      // Página 0-based no nosso DTO vira 1-based na URL do TMDb, e volta
+      // pra 0-based na resposta normalizada.
+      expect(result.page).toBe(0);
+      expect(result.totalPages).toBe(5);
+
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl.hostname).toBe('api.themoviedb.org');
+      expect(calledUrl.searchParams.get('query')).toBe('origem');
+      expect(calledUrl.searchParams.get('page')).toBe('1');
+      expect(calledUrl.searchParams.get('api_key')).toBe('fake-api-key');
+      expect(cache.set).toHaveBeenCalledWith(
+        expect.stringContaining('catalog:search:TMDB:'),
+        result,
+        5 * 60 * 1000,
+      );
+    });
+
+    it('retorna lista vazia quando o TMDb não encontra nenhum filme (results ausente)', async () => {
+      fetchMock.mockResolvedValue(fakeResponse({ jsonBody: { page: 1 } }));
+
+      const result = await service.search({ source: 'TMDB' });
+
+      expect(result.items).toEqual([]);
+    });
+
+    it('rejeita com ServiceUnavailable quando TMDB_API_KEY não está configurada', async () => {
+      configService.get.mockReturnValue(undefined);
+
+      await expect(service.search({ source: 'TMDB' })).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+  });
+
+  describe('getById (externalId prefixado com tmdb:)', () => {
+    it('roteia pra API do TMDb e normaliza genres → genre_ids antes de mapear', async () => {
+      fetchMock.mockResolvedValue(
+        fakeResponse({
+          jsonBody: {
+            id: 27205,
+            title: 'A Origem',
+            genres: [{ id: 28, name: 'Action' }],
+          },
+        }),
+      );
+
+      const result = await service.getById('tmdb:27205');
+
+      expect(result.externalId).toBe('tmdb:27205');
+      expect(result.source).toBe('TMDB');
+      expect(result.category).toBe('Ação');
+
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl.hostname).toBe('api.themoviedb.org');
+      expect(calledUrl.pathname).toContain('/movie/27205');
+      expect(cache.set).toHaveBeenCalledWith(
+        'catalog:event:TMDB:27205',
+        result,
+        5 * 60 * 1000,
       );
     });
   });

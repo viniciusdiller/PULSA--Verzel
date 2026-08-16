@@ -148,10 +148,13 @@ export class EventsService {
     });
   }
 
-  // Vitrine única e compartilhada entre organizadores — no máximo
-  // MAX_FEATURED_EVENTS eventos com featured=true na plataforma inteira,
-  // não por organizador. Só evento já PUBLISHED pode entrar (destacar um
-  // rascunho na home pública não faz sentido, ele nem aparece lá).
+  // Vitrine compartilhada entre organizadores — no máximo
+  // MAX_FEATURED_EVENTS eventos com featured=true POR externalSource
+  // (Ticketmaster e TMDB têm cada uma seu próprio teto de 4, contados
+  // independentemente — destacar 4 filmes não consome vaga de show, e
+  // vice-versa). Não é por organizador. Só evento já PUBLISHED pode
+  // entrar (destacar um rascunho na home pública não faz sentido, ele
+  // nem aparece lá).
   async feature(organizerId: string, eventId: string): Promise<Event> {
     const event = await this.findOwnedEventOrThrow(organizerId, eventId);
 
@@ -165,11 +168,14 @@ export class EventsService {
     }
 
     const featuredCount = await this.prisma.event.count({
-      where: { featured: true },
+      where: { featured: true, externalSource: event.externalSource },
     });
     if (featuredCount >= EVENTS_LIMITS.MAX_FEATURED_EVENTS) {
+      const isMovie = event.externalSource === 'TMDB';
+      const plural = isMovie ? 'filmes' : 'eventos';
+      const singular = isMovie ? 'filme' : 'evento';
       throw new BadRequestException(
-        `Limite de ${EVENTS_LIMITS.MAX_FEATURED_EVENTS} eventos em destaque atingido. Remova outro evento dos destaques antes de adicionar este.`,
+        `Limite de ${EVENTS_LIMITS.MAX_FEATURED_EVENTS} ${plural} em destaque atingido. Remova outro ${singular} dos destaques antes de adicionar este.`,
       );
     }
 
@@ -454,12 +460,18 @@ export class EventsService {
     };
   }
 
-  // Vitrine "Em destaque" da home pública — sempre no máximo
-  // MAX_FEATURED_EVENTS itens (o limite já é aplicado na escrita, em
-  // feature()), então não precisa de paginação aqui.
-  async findFeatured() {
+  // Vitrine "Em destaque"/"Filmes em destaque" da home pública — sempre
+  // no máximo MAX_FEATURED_EVENTS itens (o limite já é aplicado na
+  // escrita, em feature(), escopado por externalSource), então não
+  // precisa de paginação aqui. `source` omitido retorna destaques de
+  // qualquer fonte (comportamento anterior, preservado).
+  async findFeatured(source?: string) {
     const events = await this.prisma.event.findMany({
-      where: { status: EventStatus.PUBLISHED, featured: true },
+      where: {
+        status: EventStatus.PUBLISHED,
+        featured: true,
+        ...(source ? { externalSource: source } : {}),
+      },
       orderBy: { startsAt: 'asc' },
       take: EVENTS_LIMITS.MAX_FEATURED_EVENTS,
       include: { sections: true },

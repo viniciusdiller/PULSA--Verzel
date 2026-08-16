@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { CatalogSearchResponse } from "@/types/catalog";
+import type { CatalogSearchResponse, CatalogSource } from "@/types/catalog";
 
-export function useCatalogSearchQuery(keyword: string) {
+export function useCatalogSearchQuery(keyword: string, source: CatalogSource = "TICKETMASTER") {
   return useQuery({
-    queryKey: ["catalog", "search", keyword],
+    queryKey: ["catalog", "search", source, keyword],
     queryFn: async () => {
       const { data } = await apiClient.get<CatalogSearchResponse>("/catalog/events", {
-        params: keyword ? { keyword } : undefined,
+        params: { source, ...(keyword ? { keyword } : {}) },
       });
       return data;
     },

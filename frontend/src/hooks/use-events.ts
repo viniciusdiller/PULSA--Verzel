@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type { EventListResponse, EventSummary, SeatMapResponse } from "@/types/event";
+import type { CatalogSource } from "@/types/catalog";
 
 // page/pageSize são opcionais e retrocompatíveis: quem já chamava sem
 // eles (home pública, que só usa a 1ª página) continua se comportando
@@ -24,11 +25,16 @@ export function useEventsQuery(search: string, city?: string, page?: number, pag
   });
 }
 
-export function useFeaturedEventsQuery() {
+// `source` opcional escopa a vitrine de destaques por fonte (o backend
+// agora tem tetos de 4 independentes por externalSource) — omitido
+// preserva o comportamento antigo (destaques de qualquer fonte juntos).
+export function useFeaturedEventsQuery(source?: CatalogSource) {
   return useQuery({
-    queryKey: ["events", "featured"],
+    queryKey: ["events", "featured", source ?? null],
     queryFn: async () => {
-      const { data } = await apiClient.get<EventSummary[]>("/events/featured");
+      const { data } = await apiClient.get<EventSummary[]>("/events/featured", {
+        params: { ...(source ? { source } : {}) },
+      });
       return data;
     },
   });

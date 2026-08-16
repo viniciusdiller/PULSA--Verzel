@@ -499,7 +499,7 @@ describe('EventsService', () => {
   });
 
   describe('findFeatured', () => {
-    it('busca só eventos publicados e destacados, limitado a MAX_FEATURED_EVENTS', async () => {
+    it('busca só eventos publicados e destacados, limitado a MAX_FEATURED_EVENTS, sem filtrar por fonte quando source não é informado', async () => {
       prisma.event.findMany.mockResolvedValue([
         { id: 'e1', sections: [{ priceCents: 2000 }] },
       ]);
@@ -515,6 +515,23 @@ describe('EventsService', () => {
       expect(result).toEqual([
         { id: 'e1', sections: [{ priceCents: 2000 }], fromPriceCents: 2000 },
       ]);
+    });
+
+    it('filtra por externalSource quando source é informado', async () => {
+      prisma.event.findMany.mockResolvedValue([]);
+
+      await service.findFeatured('TMDB');
+
+      expect(prisma.event.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            status: EventStatus.PUBLISHED,
+            featured: true,
+            externalSource: 'TMDB',
+          },
+          take: 4,
+        }),
+      );
     });
   });
 
@@ -584,6 +601,7 @@ describe('EventsService', () => {
         organizerId: 'organizer-1',
         status: EventStatus.PUBLISHED,
         featured: false,
+        externalSource: 'TICKETMASTER',
       });
       prisma.event.count.mockResolvedValue(2);
       prisma.event.update.mockResolvedValue({ id: 'event-1', featured: true });
@@ -591,7 +609,7 @@ describe('EventsService', () => {
       const result = await service.feature('organizer-1', 'event-1');
 
       expect(prisma.event.count).toHaveBeenCalledWith({
-        where: { featured: true },
+        where: { featured: true, externalSource: 'TICKETMASTER' },
       });
       expect(prisma.event.update).toHaveBeenCalledWith({
         where: { id: 'event-1' },
@@ -606,6 +624,7 @@ describe('EventsService', () => {
         organizerId: 'organizer-1',
         status: EventStatus.PUBLISHED,
         featured: true,
+        externalSource: 'TICKETMASTER',
       });
 
       const result = await service.feature('organizer-1', 'event-1');
@@ -621,6 +640,7 @@ describe('EventsService', () => {
         organizerId: 'organizer-1',
         status: EventStatus.DRAFT,
         featured: false,
+        externalSource: 'TICKETMASTER',
       });
 
       await expect(service.feature('organizer-1', 'event-1')).rejects.toThrow(
@@ -629,17 +649,18 @@ describe('EventsService', () => {
       expect(prisma.event.update).not.toHaveBeenCalled();
     });
 
-    it('rejeita quando a vitrine de destaques já está cheia (limite de 4)', async () => {
+    it('rejeita quando a vitrine de destaques já está cheia (limite de 4) com mensagem de "eventos" para show', async () => {
       prisma.event.findUnique.mockResolvedValue({
         id: 'event-1',
         organizerId: 'organizer-1',
         status: EventStatus.PUBLISHED,
         featured: false,
+        externalSource: 'TICKETMASTER',
       });
       prisma.event.count.mockResolvedValue(4);
 
       await expect(service.feature('organizer-1', 'event-1')).rejects.toThrow(
-        BadRequestException,
+        'Limite de 4 eventos em destaque atingido. Remova outro evento dos destaques antes de adicionar este.',
       );
       expect(prisma.event.update).not.toHaveBeenCalled();
     });
@@ -650,11 +671,58 @@ describe('EventsService', () => {
         organizerId: 'outro-organizador',
         status: EventStatus.PUBLISHED,
         featured: false,
+        externalSource: 'TICKETMASTER',
       });
 
       await expect(service.feature('organizer-1', 'event-1')).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('escopa a contagem por externalSource=TMDB ao destacar um filme, e usa mensagem "filmes" no limite', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'movie-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.PUBLISHED,
+        featured: false,
+        externalSource: 'TMDB',
+      });
+      prisma.event.count.mockResolvedValue(4);
+
+      await expect(service.feature('organizer-1', 'movie-1')).rejects.toThrow(
+        'Limite de 4 filmes em destaque atingido. Remova outro filme dos destaques antes de adicionar este.',
+      );
+      expect(prisma.event.count).toHaveBeenCalledWith({
+        where: { featured: true, externalSource: 'TMDB' },
+      });
+      expect(prisma.event.update).not.toHaveBeenCalled();
+    });
+
+    it('destacar um filme não é bloqueado pela vitrine de shows já cheia (contagens independentes por fonte)', async () => {
+      prisma.event.findUnique.mockResolvedValue({
+        id: 'movie-1',
+        organizerId: 'organizer-1',
+        status: EventStatus.PUBLISHED,
+        featured: false,
+        externalSource: 'TMDB',
+      });
+      // Mesmo que a vitrine de shows (TICKETMASTER) já esteja cheia, a
+      // contagem que importa aqui é a de TMDB — o mock só retorna um
+      // valor fixo (não simula um banco real por fonte), então o que
+      // este teste realmente prova é que a query de contagem foi
+      // escopada pelo externalSource do evento sendo destacado, não que
+      // ela ignora um estado de outra fonte (isso é garantia do Prisma
+      // filtrando no banco de verdade, fora do escopo de um teste
+      // unitário com mock).
+      prisma.event.count.mockResolvedValue(0);
+      prisma.event.update.mockResolvedValue({ id: 'movie-1', featured: true });
+
+      const result = await service.feature('organizer-1', 'movie-1');
+
+      expect(prisma.event.count).toHaveBeenCalledWith({
+        where: { featured: true, externalSource: 'TMDB' },
+      });
+      expect(result.featured).toBe(true);
     });
   });
 
@@ -665,6 +733,7 @@ describe('EventsService', () => {
         organizerId: 'organizer-1',
         status: EventStatus.PUBLISHED,
         featured: true,
+        externalSource: 'TICKETMASTER',
       });
       prisma.event.update.mockResolvedValue({ id: 'event-1', featured: false });
 

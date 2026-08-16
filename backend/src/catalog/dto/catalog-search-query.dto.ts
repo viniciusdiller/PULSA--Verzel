@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -9,13 +10,26 @@ import {
 } from 'class-validator';
 
 export class CatalogSearchQueryDto {
-  @ApiPropertyOptional({ description: 'Palavra-chave (nome do show/artista)' })
+  @ApiPropertyOptional({
+    enum: ['TICKETMASTER', 'TMDB'],
+    default: 'TICKETMASTER',
+    description: 'Fonte do catálogo — shows (Ticketmaster) ou filmes (TMDb)',
+  })
+  @IsOptional()
+  @IsIn(['TICKETMASTER', 'TMDB'])
+  source?: 'TICKETMASTER' | 'TMDB' = 'TICKETMASTER';
+
+  @ApiPropertyOptional({
+    description: 'Palavra-chave (nome do show/artista, ou do filme)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   keyword?: string;
 
-  @ApiPropertyOptional({ description: 'Cidade' })
+  @ApiPropertyOptional({
+    description: 'Cidade (ignorado quando source=TMDB, que não tem venue)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)

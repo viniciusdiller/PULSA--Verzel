@@ -18,7 +18,13 @@ import type { EventSummary } from "@/types/event";
 // com dados reais do evento (imagem, título, local/data) em vez de fotos
 // decorativas, e usando `motion/react` (já a lib de animação do projeto)
 // em vez de framer-motion.
-export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
+export function FeaturedCarousel({
+  events,
+  label = "Em destaque",
+}: {
+  events: EventSummary[];
+  label?: string;
+}) {
   if (events.length === 0) return null;
 
   // "loop" do Swiper clona slides pra fingir um carrossel infinito, mas
@@ -49,7 +55,7 @@ export function FeaturedCarousel({ events }: { events: EventSummary[] }) {
     >
       <style>{overrideStyles}</style>
       <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase mb-3">
-        Em destaque
+        {label}
       </p>
 
       <Swiper

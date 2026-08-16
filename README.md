@@ -68,7 +68,7 @@ O plano original era Railway pro backend (é o que a Ticketmaster/Discovery e o 
 2. **Root Directory** = `backend`.
 3. **Build Command** = `npm install --include=dev && npm run build` — o Render seta `NODE_ENV=production` por padrão, o que faz `npm install` pular `devDependencies`, e é lá que mora o `@nestjs/cli` que o build precisa. `--include=dev` força a instalação mesmo assim.
 4. **Start Command** = `npm run build && npx prisma migrate deploy && npm run db:seed && node dist/main.js` — reaplica migrations e seed a cada deploy; o seed é idempotente (upserts), então rodar de novo não duplica nada. Isso contorna o plano gratuito do Render não ter shell pra rodar o seed manualmente depois do primeiro deploy.
-5. Env vars (veja `backend/.env.example` pra descrição de cada uma): `DATABASE_URL` (do Neon), `JWT_SECRET` (string forte, **mínimo 32 caracteres** — a validação de env recusa segredos fracos/placeholder em produção, ver `backend/src/config/env.validation.ts`), `QR_SIGNING_SECRET` (outra string forte, **diferente** de `JWT_SECRET`), `JWT_EXPIRES_IN=24h`, `HOLD_TTL_MINUTES=7`, `TICKETMASTER_API_KEY` (opcional — ver "Known issues" abaixo), `CORS_ORIGIN` (URL do Vercel, sem barra no final), `NODE_ENV=production`.
+5. Env vars (veja `backend/.env.example` pra descrição de cada uma): `DATABASE_URL` (do Neon), `JWT_SECRET` (string forte, **mínimo 32 caracteres** — a validação de env recusa segredos fracos/placeholder em produção, ver `backend/src/config/env.validation.ts`), `QR_SIGNING_SECRET` (outra string forte, **diferente** de `JWT_SECRET`), `JWT_EXPIRES_IN=24h`, `HOLD_TTL_MINUTES=7`, `TICKETMASTER_API_KEY` e `TMDB_API_KEY` (opcionais — ver "Known issues" abaixo), `CORS_ORIGIN` (URL do Vercel, sem barra no final), `NODE_ENV=production`.
 6. **Importante**: depois de editar env vars pelo dashboard do Render, é preciso clicar em "Save, rebuild, and deploy" — só digitar no campo não persiste a mudança sozinho (achado durante o próprio deploy real deste projeto).
 7. Health check: `/api/health`.
 
@@ -97,12 +97,12 @@ O plano original era Railway pro backend (é o que a Ticketmaster/Discovery e o 
 - **Auth via `localStorage` + header `Authorization: Bearer`**, não cookie httpOnly cross-domain — mais simples de acertar entre domínios Vercel/Render dentro do prazo, ao custo de uma exposição maior a XSS do que um cookie teria.
 - **Cache em memória** para o proxy do catálogo Ticketmaster (não Redis) — instância única, 7 dias de prazo, Redis seria complexidade sem ganho real aqui.
 - **Pasta única com `backend/` e `frontend/` como irmãs**, não um monorepo com pacote compartilhado — não há código compartilhado entre os dois lados, então a cerimônia de um Turborepo não se paga.
+- **Categorias de evento** (campo `category` no schema) — preenchidas automaticamente a partir da classificação do catálogo (segment da Ticketmaster, gênero do TMDb) e editáveis pelo organizador; alimentam os chips/carrosséis por categoria da home. "Em destaque" usa uma heurística real (evento mais próximo entre os publicados), não um número inventado.
 
 ## O que não foi implementado e por quê
 
 - **Cadastro público de usuários** — o desafio pede papéis semeados, não um fluxo de signup; implementar um adicionaria superfície de ataque (verificação de email, etc.) sem valor pro escopo avaliado.
 - **Painel financeiro do organizador** (receita, ingressos vendidos por evento) — ideia real e valiosa, mas fora do escopo priorizado neste momento; documentado aqui como próximo passo, não esquecimento.
-- **Categorias de evento** (Música/Esportes/Festas) — o schema não guarda isso hoje; a home usa cidade real (dado que existe) em vez de categoria (que teria que ser inventada).
 - **Refresh token** — JWT de 24h é suficiente pra demo; refresh token adicionaria complexidade de rotação/revogação sem ganho aqui.
 - **WebSocket pro mapa de assentos em tempo real** — o polling de 5s no `GET /seatmap` já resolve "assento sumiu porque outra pessoa comprou" com latência aceitável pro caso de uso.
 
@@ -110,6 +110,7 @@ O plano original era Railway pro backend (é o que a Ticketmaster/Discovery e o 
 
 - O QR renderizado em "Meus ingressos" sempre usa fundo branco fixo, mesmo no modo escuro — é proposital: leitores de QR precisam de alto contraste, então essa é a única superfície que não segue o tema.
 - **`TICKETMASTER_API_KEY` ainda não está configurada em produção (Render)** — a chave já foi obtida e testada com sucesso localmente (busca real no catálogo funcionando), só falta adicioná-la nas env vars do serviço no Render e clicar em "Save, rebuild, and deploy". Até lá, `GET /catalog/events/search` em produção retorna `503` com a mensagem "Catálogo indisponível: TICKETMASTER_API_KEY não configurada" — é uma falha graciosa e prevista (ver `backend/src/catalog/catalog.service.ts`), não um crash. Todo o resto da plataforma funciona normalmente, incluindo os eventos já publicados pelo seed, que usam uma fixture local capturada de uma resposta real da Ticketmaster (`backend/prisma/seed.ts`) e não dependem da API estar acessível.
+- **`TMDB_API_KEY` ainda não está configurada em produção (Render)** — mesma situação do item acima, só que pra fonte de filmes. A chave já foi obtida (gratuita, em [themoviedb.org](https://www.themoviedb.org/settings/api)) e testada com sucesso localmente: busca real de filme, seleção com prefill de sinopse/categoria, criação e publicação de um evento de filme, que apareceu corretamente na home numa seção de categoria nova. Até a chave ser configurada no Render, `GET /catalog/events?source=TMDB` em produção retorna `503` ("Catálogo indisponível: TMDB_API_KEY não configurada") — mesma falha graciosa e prevista do item acima, não um crash.
 
 ## Documentação de uso de IA
 
