@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
+import { Film, Music } from "lucide-react";
 
 import { useCatalogSearchQuery } from "@/hooks/use-catalog";
 import { useCreateEventMutation } from "@/hooks/use-organizer-events";
@@ -18,20 +19,41 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SectionsFieldArray } from "@/components/organizer/sections-field-array";
 import { sectionSchema, sectionsToPriceCents } from "@/lib/event-section-schema";
 import { EVENTS_MAX_CAPACITY } from "@/lib/event-constants";
 import { formatEventDate } from "@/lib/format";
-import type { CatalogEvent } from "@/types/catalog";
+import type { CatalogEvent, CatalogSource } from "@/types/catalog";
 
 const configureSchema = z.object({
   description: z.string().min(10, "Descreva o evento em pelo menos 10 caracteres"),
+  venueName: z.string().min(1, "Obrigatório"),
+  venueCity: z.string().min(1, "Obrigatório"),
   venueAddress: z.string().min(1, "Obrigatório"),
+  startsAt: z.string().min(1, "Obrigatório"),
   category: z.string().max(60).optional(),
   sections: z.array(sectionSchema).min(1).max(20),
 });
 
 type ConfigureFormValues = z.infer<typeof configureSchema>;
+
+const SOURCE_LABEL: Record<CatalogSource, string> = {
+  TICKETMASTER: "Ticketmaster",
+  TMDB: "TMDb",
+};
+
+// <input type="datetime-local"> espera "AAAA-MM-DDTHH:mm" em horário
+// local (sem timezone) — convertemos pros dois sentidos aqui. `new
+// Date(iso)` já entende ISO com timezone (o que vem do catálogo) e
+// `new Date(datetimeLocalValue)` já entende esse formato como horário
+// local (não UTC) — não precisa de lib de data pra isso.
+function toDatetimeLocalValue(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 // A mensagem antiga era fixa e sempre culpava a TICKETMASTER_API_KEY,
 // mesmo quando a causa real era outra (rate-limit do nosso próprio
@@ -52,6 +74,7 @@ function describeCatalogError(error: unknown): string {
 
 export default function NewEventPage() {
   const router = useRouter();
+  const [source, setSource] = useState<CatalogSource>("TICKETMASTER");
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<CatalogEvent | null>(null);
   // Sem isso, cada tecla digitada disparava uma busca — "Flamengo" vira 8
@@ -62,27 +85,38 @@ export default function NewEventPage() {
     isLoading,
     isError,
     error: searchError,
-  } = useCatalogSearchQuery(debouncedKeyword);
+  } = useCatalogSearchQuery(debouncedKeyword, source);
   const createEventMutation = useCreateEventMutation();
 
   const form = useForm<ConfigureFormValues>({
     resolver: zodResolver(configureSchema),
     defaultValues: {
       description: "",
+      venueName: "",
+      venueCity: "",
       venueAddress: "",
+      startsAt: "",
       category: "",
       sections: [{ name: "Pista", priceReais: 50, rowsCount: 5, seatsPerRow: 10 }],
     },
   });
 
-  // A Ticketmaster já manda o endereço completo do local pra boa parte dos
-  // eventos (ex. "620 Atlantic Ave" pro Barclays Center) — pré-preenchemos
-  // com o que veio, mas deixamos editável, porque nem todo venue tem esse
-  // dado e o organizador pode querer ajustar.
+  // Pré-preenche tudo que o catálogo já sabe — a Ticketmaster costuma
+  // trazer local/data prontos, o TMDb já traz a sinopse (overview) mas
+  // nunca local/data (não é uma sessão de cinema, é só o filme). Tudo
+  // fica editável: o organizador confere e ajusta antes de publicar.
   function handleSelectEvent(item: CatalogEvent) {
     setSelected(item);
+    form.setValue("description", item.description ?? "");
+    form.setValue("venueName", item.venueName);
+    form.setValue("venueCity", item.venueCity);
     form.setValue("venueAddress", item.venueAddress);
+    form.setValue("startsAt", item.startsAt ? toDatetimeLocalValue(item.startsAt) : "");
     form.setValue("category", item.category ?? "");
+  }
+
+  function handleSourceChange(value: string) {
+    setSource(value as CatalogSource);
   }
 
   async function onSubmit(values: ConfigureFormValues) {
@@ -98,16 +132,12 @@ export default function NewEventPage() {
         title: selected.title,
         description: values.description,
         imageUrl: selected.imageUrl ?? undefined,
-        // Date.now() aqui só roda dentro de onSubmit (disparado por
-        // handleSubmit no clique), nunca durante o render — falso positivo
-        // da checagem estática do plugin, que não distingue "código no
-        // escopo do componente" de "só alcançável a partir de um handler".
-        // eslint-disable-next-line react-hooks/purity
-        startsAt: selected.startsAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        venueName: selected.venueName || "A definir",
-        venueCity: selected.venueCity || "A definir",
+        startsAt: new Date(values.startsAt).toISOString(),
+        venueName: values.venueName,
+        venueCity: values.venueCity,
         venueAddress: values.venueAddress,
         externalId: selected.externalId,
+        externalSource: selected.source,
         category: values.category || undefined,
         sections: sectionsToPriceCents(values.sections),
       });
@@ -129,10 +159,23 @@ export default function NewEventPage() {
         </p>
         <h1 className="font-heading mb-6 text-3xl">Buscar no catálogo</h1>
 
+        <Tabs value={source} onValueChange={handleSourceChange} className="mb-6">
+          <TabsList>
+            <TabsTrigger value="TICKETMASTER" className="gap-1.5">
+              <Music className="size-4" />
+              Shows
+            </TabsTrigger>
+            <TabsTrigger value="TMDB" className="gap-1.5">
+              <Film className="size-4" />
+              Filmes
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <Input
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Nome do show ou artista..."
+          placeholder={source === "TICKETMASTER" ? "Nome do show ou artista..." : "Nome do filme..."}
           className="mb-6"
         />
 
@@ -190,19 +233,41 @@ export default function NewEventPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descrição</FormLabel>
-                <FormControl>
-                  <Textarea rows={4} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="venueName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome do local</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Arena Verzel" {...field} />
+                  </FormControl>
+                  {!selected.venueName && (
+                    <p className="text-xs text-muted-foreground">
+                      {selected.source === "TMDB"
+                        ? "Filme não tem local de sessão no catálogo — informe o cinema."
+                        : `A ${SOURCE_LABEL[selected.source]} não informou o local — preencha manualmente.`}
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="venueCity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cidade</FormLabel>
+                  <FormControl>
+                    <Input placeholder="São Paulo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <FormField
             control={form.control}
@@ -215,9 +280,50 @@ export default function NewEventPage() {
                 </FormControl>
                 <p className="text-xs text-muted-foreground">
                   {selected.venueAddress
-                    ? "Preenchido automaticamente com o endereço que a Ticketmaster informou — confira e ajuste se precisar."
-                    : "A Ticketmaster não informou o endereço deste local — preencha manualmente."}
+                    ? `Preenchido automaticamente com o endereço que a ${SOURCE_LABEL[selected.source]} informou — confira e ajuste se precisar.`
+                    : `A ${SOURCE_LABEL[selected.source]} não informou o endereço deste local — preencha manualmente.`}
                 </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="startsAt"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{selected.source === "TMDB" ? "Data e hora da sessão" : "Data e hora"}</FormLabel>
+                <FormControl>
+                  <Input type="datetime-local" {...field} />
+                </FormControl>
+                {!selected.startsAt && (
+                  <p className="text-xs text-muted-foreground">
+                    {selected.source === "TMDB"
+                      ? "Filme não tem sessão marcada no catálogo — defina o horário da exibição."
+                      : `A ${SOURCE_LABEL[selected.source]} não informou uma data — preencha manualmente.`}
+                  </p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Descrição</FormLabel>
+                <FormControl>
+                  <Textarea rows={4} {...field} />
+                </FormControl>
+                {selected.description && (
+                  <p className="text-xs text-muted-foreground">
+                    Preenchida automaticamente com a sinopse do {SOURCE_LABEL[selected.source]} —
+                    confira e ajuste se precisar.
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -234,8 +340,8 @@ export default function NewEventPage() {
                 </FormControl>
                 <p className="text-xs text-muted-foreground">
                   {selected.category
-                    ? "Preenchida automaticamente a partir da classificação da Ticketmaster — confira e ajuste se precisar."
-                    : "A Ticketmaster não classificou este evento — preencha manualmente ou deixe em branco."}
+                    ? `Preenchida automaticamente a partir da classificação da ${SOURCE_LABEL[selected.source]} — confira e ajuste se precisar.`
+                    : `A ${SOURCE_LABEL[selected.source]} não classificou este item — preencha manualmente ou deixe em branco.`}
                 </p>
                 <FormMessage />
               </FormItem>
