@@ -109,7 +109,12 @@ export function DateTimePicker({
           <SelectTrigger className="w-[68px]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="max-h-60">
+          {/* !important necessário: o max-height dinâmico que o Select
+              padrão do projeto usa (--radix-select-content-available-height)
+              vence qualquer max-h-* comum aqui — 6 itens × 28px cada
+              (medido de verdade no item renderizado), sem padding extra
+              relevante no viewport. */}
+          <SelectContent className="max-h-[168px]!">
             {HOURS.map((h) => (
               <SelectItem key={h} value={h}>
                 {h}
