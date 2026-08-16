@@ -97,12 +97,12 @@ O plano original era Railway pro backend (é o que a Ticketmaster/Discovery e o 
 - **Auth via `localStorage` + header `Authorization: Bearer`**, não cookie httpOnly cross-domain — mais simples de acertar entre domínios Vercel/Render dentro do prazo, ao custo de uma exposição maior a XSS do que um cookie teria.
 - **Cache em memória** para o proxy do catálogo Ticketmaster (não Redis) — instância única, 7 dias de prazo, Redis seria complexidade sem ganho real aqui.
 - **Pasta única com `backend/` e `frontend/` como irmãs**, não um monorepo com pacote compartilhado — não há código compartilhado entre os dois lados, então a cerimônia de um Turborepo não se paga.
+- **Categorias de evento** (campo `category` no schema) — preenchidas automaticamente a partir da classificação do catálogo (segment da Ticketmaster, gênero do TMDb) e editáveis pelo organizador; alimentam os chips/carrosséis por categoria da home. "Em destaque" usa uma heurística real (evento mais próximo entre os publicados), não um número inventado.
 
 ## O que não foi implementado e por quê
 
 - **Cadastro público de usuários** — o desafio pede papéis semeados, não um fluxo de signup; implementar um adicionaria superfície de ataque (verificação de email, etc.) sem valor pro escopo avaliado.
 - **Painel financeiro do organizador** (receita, ingressos vendidos por evento) — ideia real e valiosa, mas fora do escopo priorizado neste momento; documentado aqui como próximo passo, não esquecimento.
-- **Categorias de evento** (Música/Esportes/Festas) — o schema não guarda isso hoje; a home usa cidade real (dado que existe) em vez de categoria (que teria que ser inventada).
 - **Refresh token** — JWT de 24h é suficiente pra demo; refresh token adicionaria complexidade de rotação/revogação sem ganho aqui.
 - **WebSocket pro mapa de assentos em tempo real** — o polling de 5s no `GET /seatmap` já resolve "assento sumiu porque outra pessoa comprou" com latência aceitável pro caso de uso.
 
