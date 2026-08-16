@@ -15,10 +15,12 @@ import { cn } from "@/lib/utils";
 export function SiteHeader() {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
-  // Portaria não acumula/gasta saldo (isso é coisa de CUSTOMER que teve
-  // um evento cancelado) — mostrar "Saldo: R$ 0,00" pra quem só bate
-  // cartão de ingresso na entrada não ajuda em nada, só ocupa espaço.
-  const showBalance = user?.role !== "GATE_STAFF";
+  // Saldo é coisa de CUSTOMER que teve um evento cancelado — portaria
+  // não acumula/gasta saldo, e organizador também não (quem recebe
+  // estorno é o cliente, não quem criou o evento). Mostrar
+  // "Saldo: R$ 0,00" pra esses dois papéis não ajuda em nada, só ocupa
+  // espaço.
+  const showBalance = user?.role === "CUSTOMER";
   // Saldo em tempo quase real: recarrega ao focar a aba, então um cliente
   // que estava com o app aberto quando um evento foi cancelado vê o saldo
   // novo assim que volta pra essa aba, sem precisar recarregar a página.

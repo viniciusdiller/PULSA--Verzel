@@ -77,9 +77,10 @@ export default function ProfilePage() {
   const { user, updateUser, logout } = useAuth();
   const { data: profile, isLoading } = useProfileQuery();
   const updateProfileMutation = useUpdateProfileMutation();
-  // Portaria não acumula/gasta saldo — mesmo corte já aplicado no
-  // site-header, aqui replicado pra não mostrar "R$ 0,00" sem sentido.
-  const showBalance = profile?.role !== "GATE_STAFF";
+  // Só CUSTOMER acumula/gasta saldo (estorno de evento cancelado) —
+  // mesmo corte já aplicado no site-header, aqui replicado pra não
+  // mostrar "R$ 0,00" sem sentido pra portaria nem organizador.
+  const showBalance = profile?.role === "CUSTOMER";
 
   const nameForm = useForm<NameFormValues>({
     resolver: zodResolver(nameSchema),
