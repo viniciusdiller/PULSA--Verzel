@@ -277,7 +277,7 @@ Vou também renomear a marca de "Elite Dev Ingressos" pra **"PULSA"** no header/
 
 ## Migração de deploy: Railway → Render + Neon (15/08)
 
-O trial gratuito do Railway (previsto nas seções acima como plataforma de backend) acabou no meio do processo de deploy, antes do primeiro deploy real em produção. Alternativa escolhida: **Render** (Web Service gratuito) pro backend + **Neon** (Postgres gerenciado gratuito) pro banco — mesma forma (build + start command + env vars), provedor diferente. `backend/railway.json` ficou no repositório sem uso (não removido — documentar aqui é mais honesto que apagar rastro de uma decisão que existiu).
+O trial gratuito do Railway (previsto nas seções acima como plataforma de backend) acabou no meio do processo de deploy, antes do primeiro deploy real em produção. Alternativa escolhida: **Render** (Web Service gratuito) pro backend + **Neon** (Postgres gerenciado gratuito) pro banco — mesma forma (build + start command + env vars), provedor diferente. `backend/railway.json` ficou no repositório sem uso por um tempo (não removido — documentar aqui pareceu mais honesto que apagar rastro de uma decisão que existiu) — *atualização de 16/08: removido na auditoria final, ver última seção deste documento; o registro histórico acima permanece intacto.*
 
 Três problemas reais apareceram só durante o deploy de verdade, nenhum visível rodando local:
 1. **`nest: not found`** no build do Render — o `NODE_ENV=production` que o Render seta por padrão faz `npm install` pular `devDependencies`, onde mora o `@nestjs/cli`. Fix: `Build Command` = `npm install --include=dev && npm run build`.
@@ -313,3 +313,16 @@ O `category` (adicionado nesta mesma sessão, ver migração `event_category_and
 **A home não precisou de nenhuma mudança.** A seção de categorias já agrupa eventos publicados por qualquer valor distinto de `category` presente nos dados (`(public)/page.tsx`, `categoryOptions` via `Map` contando ocorrências) — não é uma lista fixa de segmentos da Ticketmaster. Filmes publicados com categoria "Ação"/"Comédia"/etc. (vinda do gênero do TMDb) aparecem como novos chips/carrosséis na home automaticamente, de graça.
 
 **V1 escopado deliberadamente pequeno**: só busca por nome (mesma UX do fluxo de shows, sem seção "em cartaz"/"populares" do TMDb) — cobre o caso de uso real (organizador sabe qual filme quer publicar) sem inflar a UI com um segundo padrão de navegação de catálogo.
+
+## Auditoria final e limpeza de Railway (16/08)
+
+Com o produto funcionalmente completo, pedi uma reconferência linha por linha do PDF do desafio (`Desafio-Elite-Dev-2026.md`) contra o código real — não contra a documentação, contra a implementação em si. Um agente de exploração verificou os 29 pontos do enunciado (7 requisitos funcionais de front-end, 7 de back-end, 4 não-funcionais, 6 opcionais, mais os itens de entrega e uso de IA), cada um com evidência em arquivo/linha, sem confiar em "o README diz que está feito".
+
+**Resultado: nenhum requisito obrigatório faltando.** Os únicos gaps encontrados foram de documentação desatualizada, não de código:
+
+- `AI_USAGE.md` citava "223 testes" — número de uma fase anterior do projeto. Rodei `npm test` de novo: **227 testes unitários + 4 e2e (231 no total)**. Corrigido.
+- Faltava um jeito de quem avalia confirmar cada requisito do PDF sem precisar ler o README inteiro de cabo a rabo. Adicionei uma seção "Requisitos do desafio — checklist" no topo do README, item por item, cada um com o arquivo onde está implementado — ataca direto o aviso do próprio PDF de que "a ausência de explicações impactará negativamente na nota final".
+- As env vars `TICKETMASTER_API_KEY`/`TMDB_API_KEY` — que já tinham sido testadas com sucesso localmente, mas nunca tinham sido configuradas no Render — foram configuradas em produção pelo usuário durante esta mesma sessão de auditoria. Os dois bullets de "Known issues" no README que descreviam isso como pendente foram substituídos por uma nota só sobre o comportamento de fallback gracioso (`503`), já que o problema real deixou de existir.
+- Confirmei via API pública do GitHub (`GET /repos/viniciusdiller/PULSA--Verzel`) que o repositório é público (`"visibility": "public"`) — item de entrega do PDF, sem gap.
+
+**Limpeza de Railway**: o usuário notou que várias partes do código ainda citavam Railway (provedor abandonado no meio do projeto, ver seção acima) e pediu limpeza. Removido `backend/railway.json` (arquivo órfão, `startCommand` já nem batia mais com o que o Render roda hoje) e atualizados três comentários de código que citavam "Railway" (`backend/src/main.ts`, `backend/prisma/seed.ts`, `frontend/src/lib/api-client.ts`) para "Render". As seções históricas deste documento que mencionam Railway (o plano de execução original, a seção "Deploy real (Railway + Vercel)") foram **deliberadamente preservadas** — são o registro real do que foi planejado naquele momento, e reescrevê-las destruiria o valor do documento como prova de processo, que é exatamente o que o PDF pede pra versionar.
