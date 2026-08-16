@@ -87,8 +87,10 @@ model Event {
   // acomodar um catálogo futuro que não seja só shows (ex. filmes).
   category String?
 
-  // No máximo 4 eventos com featured=true na plataforma inteira (checado
-  // em EventsService.feature) — é o que alimenta a seção "Em destaque" da
+  // No máximo 4 eventos com featured=true POR externalSource (checado em
+  // EventsService.feature, escopado por fonte) — Ticketmaster e TMDB têm
+  // vitrines de destaque independentes, cada uma com seu próprio teto de
+  // 4. É o que alimenta as seções "Em destaque"/"Filmes em destaque" da
   // home pública. Só eventos PUBLISHED podem ser destacados.
   featured Boolean @default(false)
 

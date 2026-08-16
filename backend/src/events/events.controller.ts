@@ -18,6 +18,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventListQueryDto } from './dto/event-list-query.dto';
 import { OrganizerEventListQueryDto } from './dto/organizer-event-list-query.dto';
+import { EventFeaturedQueryDto } from './dto/event-featured-query.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -85,7 +86,7 @@ export class EventsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary:
-      'Adiciona um evento publicado aos "Em destaque" da home pública (máx. 4, entre todos os organizadores)',
+      'Adiciona um evento publicado aos "Em destaque" da home pública (máx. 4 por fonte — Ticketmaster e TMDB têm vitrines independentes)',
   })
   feature(
     @CurrentUser() user: AuthenticatedUser,
@@ -149,10 +150,11 @@ export class EventsController {
   @Public()
   @Get('featured')
   @ApiOperation({
-    summary: 'Lista os eventos em destaque na home pública (no máx. 4)',
+    summary:
+      'Lista os eventos em destaque na home pública (no máx. 4, ou 4 por fonte se `source` for informado)',
   })
-  findFeatured() {
-    return this.eventsService.findFeatured();
+  findFeatured(@Query() query: EventFeaturedQueryDto) {
+    return this.eventsService.findFeatured(query.source);
   }
 
   @Get('organizer/mine')
