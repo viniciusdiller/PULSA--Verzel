@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
+import { Wallet } from "lucide-react";
 import { useMyEventsQuery, usePublishEventMutation } from "@/hooks/use-organizer-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,14 +61,22 @@ export default function OrganizerDashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Organizador</p>
           <h1 className="font-heading text-3xl">Meus eventos</h1>
         </div>
-        <Button asChild>
-          <Link href="/organizer/new">+ Novo evento</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/organizer/finance">
+              <Wallet className="size-4" />
+              Financeiro
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/organizer/new">+ Novo evento</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">

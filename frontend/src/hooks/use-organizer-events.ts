@@ -1,6 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { EventListResponse, EventStatus, EventSummary } from "@/types/event";
+import type {
+  EventListResponse,
+  EventStatus,
+  EventSummary,
+  OrganizerStatsResponse,
+} from "@/types/event";
 
 export interface MyEventsFilters {
   status?: EventStatus;
@@ -34,6 +39,16 @@ export function useMyEventQuery(eventId: string) {
       return data;
     },
     enabled: !!eventId,
+  });
+}
+
+export function useOrganizerStatsQuery() {
+  return useQuery({
+    queryKey: ["organizer", "stats"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<OrganizerStatsResponse>("/events/organizer/stats");
+      return data;
+    },
   });
 }
 
