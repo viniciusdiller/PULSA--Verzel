@@ -42,35 +42,14 @@ export default function EventsListPage() {
 
   const isBrowsingUnfiltered = !debouncedSearch && !selectedCity && !selectedCategory;
 
-  const displayedEvents = useMemo(() => {
-    if (!filteredData) return [];
-    if (!selectedCategory) return filteredData.items;
-    return filteredData.items.filter((event) => event.category === selectedCategory);
-  }, [filteredData, selectedCategory]);
-
-  const cityOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const event of allData?.items ?? []) {
-      counts.set(event.venueCity, (counts.get(event.venueCity) ?? 0) + 1);
-    }
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [allData]);
-
-  const categoryOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const event of allData?.items ?? []) {
-      if (!event.category) continue;
-      counts.set(event.category, (counts.get(event.category) ?? 0) + 1);
-    }
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [allData]);
-
-  // Filmes (TMDB) ficam separados dos shows (Ticketmaster) na parte de
-  // categorias: as categorias de show (Music, Sports, Arts & Theatre...)
+  // Filmes (TMDB) ficam separados dos shows (Ticketmaster) em toda a
+  // página: "Eventos em cartaz" (grade + busca + filtro de cidade/
+  // categoria logo abaixo) é 100% show — filme tem sua própria grade
+  // equivalente ("Todos os filmes", dentro de MoviesSection) com filtro
+  // próprio. Categorias de show (Music, Sports, Arts & Theatre...)
   // aparecem primeiro, e só depois, na parte final da página, vem a
-  // seção "Filmes" com filtro próprio + as categorias de filme (Ação,
-  // Comédia...) — dois eixos de navegação (gênero de show vs. gênero de
-  // filme) que não fazem sentido misturados na mesma leva de carrosséis.
+  // seção "Filmes" + as categorias de filme (Ação, Comédia...) — dois
+  // eixos de navegação que não fazem sentido misturados.
   const { showEvents, movieEvents } = useMemo(() => {
     const items = allData?.items ?? [];
     return {
@@ -78,6 +57,30 @@ export default function EventsListPage() {
       movieEvents: items.filter((event) => event.externalSource === "TMDB"),
     };
   }, [allData]);
+
+  const displayedEvents = useMemo(() => {
+    if (!filteredData) return [];
+    const shows = filteredData.items.filter((event) => event.externalSource !== "TMDB");
+    if (!selectedCategory) return shows;
+    return shows.filter((event) => event.category === selectedCategory);
+  }, [filteredData, selectedCategory]);
+
+  const cityOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const event of showEvents) {
+      counts.set(event.venueCity, (counts.get(event.venueCity) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [showEvents]);
+
+  const categoryOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const event of showEvents) {
+      if (!event.category) continue;
+      counts.set(event.category, (counts.get(event.category) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [showEvents]);
 
   const heroEvent = useMemo(() => {
     // A curadoria manual (featuredEvents) tem prioridade sobre a
