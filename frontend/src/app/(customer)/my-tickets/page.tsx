@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMyTicketsQuery } from "@/hooks/use-tickets";
-import type { Ticket as TicketType } from "@/types/ticket";
+import type { TicketWithDetails as TicketType } from "@/types/ticket";
 
 const PAGE_SIZE = 4;
+const TICKETS_PAGE_SIZE = 4;
 type Tab = "active" | "past";
 
 type EventGroup = {
@@ -42,7 +43,7 @@ function groupTicketsByEvent(tickets: TicketType[]): EventGroup[] {
       title: event.title,
       imageUrl: event.imageUrl,
       venueName: event.venueName,
-      city: event.city,
+      city: event.venueCity,
       startsAt: event.startsAt,
       tickets: [ticket],
     });
@@ -68,6 +69,7 @@ export default function MyTicketsPage() {
   const [tab, setTab] = useState<Tab>("active");
   const [page, setPage] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [ticketPage, setTicketPage] = useState(1);
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
@@ -91,10 +93,32 @@ export default function MyTicketsPage() {
     (group) => group.eventId === selectedEventId,
   );
 
+  const ticketPageCount = selectedGroup
+    ? Math.max(1, Math.ceil(selectedGroup.tickets.length / TICKETS_PAGE_SIZE))
+    : 1;
+  const currentTicketPage = Math.min(ticketPage, ticketPageCount);
+  const visibleTickets = selectedGroup
+    ? selectedGroup.tickets.slice(
+        (currentTicketPage - 1) * TICKETS_PAGE_SIZE,
+        currentTicketPage * TICKETS_PAGE_SIZE,
+      )
+    : [];
+
   function changeTab(nextTab: Tab) {
     setTab(nextTab);
     setPage(1);
     setSelectedEventId(null);
+    setTicketPage(1);
+  }
+
+  function openEventGroup(eventId: string) {
+    setSelectedEventId(eventId);
+    setTicketPage(1);
+  }
+
+  function closeEventGroup() {
+    setSelectedEventId(null);
+    setTicketPage(1);
   }
 
   if (isLoading) return <PageLoader label="Carregando seus ingressos" />;
@@ -156,7 +180,7 @@ export default function MyTicketsPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setSelectedEventId(null)}
+              onClick={closeEventGroup}
             >
               <ChevronLeft className="mr-2 h-4 w-4" />
               Voltar aos eventos
@@ -166,10 +190,36 @@ export default function MyTicketsPage() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {selectedGroup.tickets.map((ticket) => (
+            {visibleTickets.map((ticket) => (
               <TicketCard key={ticket.id} ticket={ticket} />
             ))}
           </div>
+
+          {ticketPageCount > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentTicketPage === 1}
+                onClick={() => setTicketPage((value) => Math.max(1, value - 1))}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Página {currentTicketPage} de {ticketPageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentTicketPage === ticketPageCount}
+                onClick={() => setTicketPage((value) => Math.min(ticketPageCount, value + 1))}
+              >
+                Próxima
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </section>
       ) : eventGroups.length === 0 ? (
         <Card>
@@ -199,7 +249,7 @@ export default function MyTicketsPage() {
               <button
                 key={group.eventId}
                 type="button"
-                onClick={() => setSelectedEventId(group.eventId)}
+                onClick={() => openEventGroup(group.eventId)}
                 className="group text-left"
               >
                 <Card className="h-full overflow-hidden transition-all duration-200 group-hover:-translate-y-1 group-hover:border-primary/60 group-hover:shadow-lg">
