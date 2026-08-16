@@ -1,3 +1,5 @@
+import type { CatalogEvent } from './catalog-event.model';
+
 export interface TicketmasterImage {
   url: string;
   width?: number;
@@ -23,18 +25,6 @@ export interface TicketmasterEventRaw {
   dates?: { start?: { dateTime?: string; localDate?: string } };
   classifications?: TicketmasterClassification[];
   _embedded?: { venues?: TicketmasterVenue[] };
-}
-
-export interface CatalogEvent {
-  externalId: string;
-  title: string;
-  imageUrl: string | null;
-  startsAt: string | null;
-  venueName: string;
-  venueCity: string;
-  venueAddress: string;
-  category: string | null;
-  raw: TicketmasterEventRaw;
 }
 
 // Preferimos a imagem widescreen (16:9) de maior largura disponível — é a
@@ -82,13 +72,17 @@ export function mapTicketmasterEvent(raw: TicketmasterEventRaw): CatalogEvent {
 
   return {
     externalId: raw.id,
+    source: 'TICKETMASTER',
     title: raw.name,
     imageUrl: pickBestImage(raw.images),
+    // A Ticketmaster não manda sinopse nos campos que consumimos aqui —
+    // diferente do TMDb (ver tmdb-mapper.util.ts), que já traz uma pronta.
+    description: null,
     startsAt: raw.dates?.start?.dateTime ?? raw.dates?.start?.localDate ?? null,
     venueName: venue?.name ?? '',
     venueCity: venue?.city?.name ?? '',
     venueAddress: venue?.address?.line1 ?? '',
     category: pickCategory(raw.classifications),
-    raw,
+    raw: raw as unknown as Record<string, unknown>,
   };
 }

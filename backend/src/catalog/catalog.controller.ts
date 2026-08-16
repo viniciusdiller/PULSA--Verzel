@@ -20,7 +20,8 @@ export class CatalogController {
   // então isso aqui é rede de segurança contra abuso, não o limite normal).
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({
-    summary: 'Busca eventos no catálogo externo (Ticketmaster Discovery)',
+    summary:
+      'Busca no catálogo externo — shows (Ticketmaster Discovery) ou filmes (TMDb), conforme `source`',
   })
   search(@Query() query: CatalogSearchQueryDto) {
     return this.catalogService.search(query);
