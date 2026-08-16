@@ -109,12 +109,19 @@ export function DateTimePicker({
           <SelectTrigger className="w-[68px]">
             <SelectValue />
           </SelectTrigger>
-          {/* !important necessário: o max-height dinâmico que o Select
+          {/* position="popper": o modo padrão ("item-aligned") tenta
+              alinhar o item selecionado embaixo do gatilho fazendo conta
+              em cima da altura NATURAL da lista (24 itens) — como a gente
+              força a altura visível pra só 6, essa conta ficava errada e
+              jogava o menu longe do campo (visto ao vivo: abria lá em
+              cima da página). "popper" ancora simples, relativo ao
+              próprio gatilho, sem esse alinhamento.
+              !important necessário: o max-height dinâmico que o Select
               padrão do projeto usa (--radix-select-content-available-height)
               vence qualquer max-h-* comum aqui — 6 itens × 28px cada
               (medido de verdade no item renderizado), sem padding extra
               relevante no viewport. */}
-          <SelectContent className="max-h-[168px]!">
+          <SelectContent position="popper" className="max-h-[168px]!">
             {HOURS.map((h) => (
               <SelectItem key={h} value={h}>
                 {h}
@@ -129,7 +136,7 @@ export function DateTimePicker({
           <SelectTrigger className="w-[70px]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper">
             {MINUTES.map((m) => (
               <SelectItem key={m} value={m}>
                 {m}
