@@ -61,7 +61,7 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 - ✅ Cancelamento com devolução ao estoque (reserva em hold antes do pagamento).
 - ✅ Mapa de assentos "em tempo real" via polling de 5s.
 - ✅ Docker Compose (Postgres local persistente).
-- ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (ver `AI_USAGE.md`).
+- ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (Jest) e 42 testes de lógica/componente no frontend (Vitest + Testing Library) (ver "Testes" abaixo e `AI_USAGE.md`).
 - ✅ Aplicação publicada.
 
 ## Rodando localmente
@@ -85,6 +85,22 @@ cd frontend
 cp .env.example .env.local
 npm install
 npm run dev              # http://localhost:3000
+```
+
+## Testes
+
+Nenhum dos dois lados precisa do Postgres/Docker rodando pra testar — o backend usa mocks do Prisma, o frontend não bate em API nenhuma.
+
+```bash
+cd backend
+npm test                 # 227 testes unitários (Jest)
+npm run test:e2e         # 4 testes e2e (sobem a aplicação de verdade, ainda com Prisma mockado)
+```
+
+```bash
+cd frontend
+npm test                 # 42 testes de lógica e componente (Vitest + Testing Library)
+npm run test:watch       # mesma coisa, mas observando arquivos — útil enquanto se escreve um teste novo
 ```
 
 ## Deploy (Render + backend, Vercel + frontend)
