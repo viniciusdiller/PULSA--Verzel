@@ -12,6 +12,8 @@ Pra identidade visual, usei ferramentas de design fora do fluxo de código — *
 
 Depois que o site já estava em produção, rodei uma rodada de testes reais com família e amigos, pedindo pra eles percorrerem o fluxo completo (organizador, cliente, portaria) em dispositivos e navegadores que eu não tinha testado. Foi nesse teste real, fora do meu próprio ambiente de desenvolvimento, que apareceram os únicos bugs que só existiam "no mundo real" — por exemplo, o toque acidental em "Sair" perto da borda da navbar mobile e o glow do indicador estourando a borda em certos aparelhos (ambos documentados em `docs/ARCHITECTURE.md`, seção "Navbar inferior mobile"). Não apareciam em nenhum viewport que eu tinha testado sozinho durante o desenvolvimento.
 
+**Também decidi excluir os dados mockados do catálogo do seed.** `backend/prisma/seed.ts` cria só o mínimo necessário pra portaria e "Meus ingressos" funcionarem sem esforço do avaliador: os 4 usuários e 2 eventos simples, escritos à mão (não vêm de nenhuma resposta gravada da Ticketmaster/TMDb). Todos os outros eventos reais que aparecem no catálogo do site — Coachella, Matrix, Carros 2, US Men's National Soccer vs. Mexico, Jessica Lea Mayfield, e os demais — não são mock nenhum: eu mesmo publiquei cada um passando pelo fluxo real do organizador, batendo nas APIs de verdade da Ticketmaster e do TMDb. Preferi isso a uma fixture estática porque prova que a integração com as duas APIs externas funciona de ponta a ponta, não só que existe um JSON parecido salvo no repositório.
+
 ## Ferramenta
 
 **Claude Code** (Sonnet 5), usado interativamente durante toda a construção do projeto — planejamento, código, testes, debugging e esta própria documentação.
