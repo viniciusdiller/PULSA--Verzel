@@ -2,6 +2,16 @@
 
 O desafio pede explicitamente para documentar o uso de IA em vez de escondê-lo — este projeto foi construído em par com o Claude Code (Anthropic), com revisão e decisão humana em cada ponto que importa. Este documento existe pra deixar claro **onde** a IA ajudou e **o que foi verificado manualmente**, não pra listar prompts.
 
+## O que foi decidido e feito sem IA
+
+Antes de qualquer prompt, a arquitetura foi minha: escolhi a stack (NestJS + Prisma + PostgreSQL no backend; Next.js + Tailwind + shadcn/ui no frontend; Render + Neon + Vercel pro deploy) e como cada peça se encaixaria — modelagem de dados, papéis de usuário, fluxo de reserva/pagamento/portaria — com base em projetos anteriores meus que já usavam esse mesmo padrão NestJS/Prisma. A IA implementou em cima dessas decisões; não as tomou por mim.
+
+Também fui atrás de referências reais da comunidade em vez de aceitar qualquer solução genérica de primeira: pesquisei componentes de front-end prontos (ex. o padrão de navbar inferior mobile com indicador "limelight", adaptado de um projeto de referência externo — ver `docs/ARCHITECTURE.md`) e critiquei/adaptei antes de aceitar no projeto.
+
+Pra identidade visual, usei ferramentas de design fora do fluxo de código — **Google Stitch**, **Claude Design** (onde montei o guia de marca PULSA, com paleta, tipografia e princípios de uso, importado e seguido à risca depois) e **Figma** — pra explorar direção visual antes de qualquer implementação, em vez de deixar a IA decidir cores/tipografia sozinha durante o código.
+
+Depois que o site já estava em produção, rodei uma rodada de testes reais com família e amigos, pedindo pra eles percorrerem o fluxo completo (organizador, cliente, portaria) em dispositivos e navegadores que eu não tinha testado. Foi nesse teste real, fora do meu próprio ambiente de desenvolvimento, que apareceram os únicos bugs que só existiam "no mundo real" — por exemplo, o toque acidental em "Sair" perto da borda da navbar mobile e o glow do indicador estourando a borda em certos aparelhos (ambos documentados em `docs/ARCHITECTURE.md`, seção "Navbar inferior mobile"). Não apareciam em nenhum viewport que eu tinha testado sozinho durante o desenvolvimento.
+
 ## Ferramenta
 
 **Claude Code** (Sonnet 5), usado interativamente durante toda a construção do projeto — planejamento, código, testes, debugging e esta própria documentação.
