@@ -57,7 +57,7 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 ### Opcionais implementados
 
 - ✅ Busca e filtro de eventos (termo, cidade, categoria).
-- ✅ Painel do organizador (CRUD completo — criar, editar, publicar/despublicar, excluir; painel financeiro/analítico ficou de fora, ver "O que não foi implementado").
+- ✅ Painel do organizador (CRUD completo — criar, editar, publicar/despublicar, excluir — e painel financeiro com receita/ingressos vendidos por evento, ver "Todas as funcionalidades do produto" abaixo).
 - ✅ Cancelamento com devolução ao estoque (reserva em hold antes do pagamento).
 - ✅ Mapa de assentos "em tempo real" via polling de 5s.
 - ✅ Docker Compose (Postgres local persistente).
@@ -90,6 +90,7 @@ Lista mais completa do que dá pra fazer no site, além do que os requisitos do 
 - Busca no catálogo real da Ticketmaster (shows) e do TMDb (filmes), com prefill de nome/local/data/sinopse quando disponível.
 - Criar evento com seções/preços/fileiras configuráveis, editar, publicar/despublicar, destacar (com limite de 4 por fonte), excluir.
 - Cancelar um evento publicado com reservas pagas dispara o reembolso em saldo automaticamente pra todo cliente afetado (ver "Saldo" acima) — se não há nenhuma reserva ainda, o evento é apagado direto em vez de só marcado como cancelado.
+- **Painel financeiro** (`/organizer/finance`) — receita total, ingressos vendidos e ticket médio somando todos os eventos, mais a receita/ingressos vendidos por evento individualmente, ordenado do que mais vendeu pro que menos vendeu (eventos sem nenhuma venda aparecem com R$ 0,00 em vez de sumir da lista). "Vendido" conta reserva paga (`ReservationStatus.PAID`), a mesma fonte de verdade do resto do fluxo de pagamento.
 
 **Reserva e pagamento**
 - Mapa de assentos interativo por seção, com o mapa atualizando sozinho a cada 5s (outro cliente reservando aparece quase em tempo real).
@@ -206,7 +207,6 @@ O plano original era Railway pro backend, mas o trial gratuito acabou no meio do
 ## O que não foi implementado e por quê
 
 - **Cadastro público de usuários** — o desafio pede papéis semeados, não um fluxo de signup; implementar um adicionaria superfície de ataque (verificação de email, etc.) sem valor pro escopo avaliado.
-- **Painel financeiro do organizador** (receita, ingressos vendidos por evento) — ideia real e valiosa, mas fora do escopo priorizado neste momento; documentado aqui como próximo passo, não esquecimento.
 - **Refresh token** — JWT de 24h é suficiente pra demo; refresh token adicionaria complexidade de rotação/revogação sem ganho aqui.
 - **WebSocket pro mapa de assentos em tempo real** — o polling de 5s no `GET /seatmap` já resolve "assento sumiu porque outra pessoa comprou" com latência aceitável pro caso de uso.
 
