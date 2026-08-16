@@ -95,7 +95,7 @@ npm run dev              # http://localhost:3000
 - **Backend**: https://projeto-de-desenvolvimento-verzel.onrender.com/api
 - **Swagger**: https://projeto-de-desenvolvimento-verzel.onrender.com/api-docs
 
-> O backend roda no plano gratuito do Render, que hiberna depois de ~15 min sem tráfego — a primeira requisição após esse período pode levar 30–50s pra "acordar" o serviço (cold start). Requisições seguintes respondem normalmente. É a troca aceita por não ter custo.
+> **Sobre o cold start:** o backend roda no plano gratuito do Render, que hiberna depois de ~15 min sem tráfego — a primeira requisição após esse período pode levar 30–50s pra "acordar" o serviço. Pedimos desculpas por esse atraso caso você caia bem nesse momento; é uma limitação real do plano gratuito, não um bug. Pra reduzir a chance disso acontecer durante a avaliação, um workflow do GitHub Actions (`.github/workflows/keep-alive.yml`) faz um ping em `/api/health` a cada 10 minutos, mantendo o serviço quente na maior parte do tempo — não é 100% garantido (o agendamento do Actions pode atrasar em horários de pico), mas reduz bastante a frequência do cold start. Requisições depois da primeira respondem normalmente.
 
 O plano original era Railway pro backend, mas o trial gratuito acabou no meio do desenvolvimento. **Render (backend) + Neon (Postgres gerenciado)** foi a alternativa gratuita mais próxima — mesma lógica de deploy, outro provedor (histórico completo da migração em `docs/ARCHITECTURE.md`).
 
