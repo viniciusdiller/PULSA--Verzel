@@ -70,6 +70,20 @@ export default function EventsListPage() {
     return allData?.items[0] ?? null;
   }, [allData, isBrowsingUnfiltered, featuredEvents]);
 
+  // Filmes (TMDB) ficam separados dos shows (Ticketmaster) na parte de
+  // categorias: as categorias de show (Music, Sports, Arts & Theatre...)
+  // aparecem primeiro, e só depois, na parte final da página, vem a
+  // seção "Filmes" com filtro próprio + as categorias de filme (Ação,
+  // Comédia...) — dois eixos de navegação (gênero de show vs. gênero de
+  // filme) que não fazem sentido misturados na mesma leva de carrosséis.
+  const { showEvents, movieEvents } = useMemo(() => {
+    const items = allData?.items ?? [];
+    return {
+      showEvents: items.filter((event) => event.externalSource !== "TMDB"),
+      movieEvents: items.filter((event) => event.externalSource === "TMDB"),
+    };
+  }, [allData]);
+
   const isLoading = allLoading || filteredLoading;
 
   return (
@@ -132,9 +146,14 @@ export default function EventsListPage() {
         )}
       </div>
 
-      {isBrowsingUnfiltered && allData && <MoviesSection events={allData.items} />}
+      {isBrowsingUnfiltered && allData && <CategorySections events={showEvents} />}
 
-      {isBrowsingUnfiltered && allData && <CategorySections events={allData.items} />}
+      {isBrowsingUnfiltered && allData && (
+        <>
+          <MoviesSection events={movieEvents} />
+          <CategorySections events={movieEvents} />
+        </>
+      )}
 
       <TrustSection />
       {!user && <CtaBand />}
