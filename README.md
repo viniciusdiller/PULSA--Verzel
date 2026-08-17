@@ -61,9 +61,10 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 - ✅ Cancelamento com devolução ao estoque (reserva em hold antes do pagamento).
 - ✅ Mapa de assentos "em tempo real" via polling de 5s.
 - ✅ Docker Compose (Postgres local persistente).
-- ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (Jest) e 42 testes de lógica/componente no frontend (Vitest + Testing Library) (ver "Testes" abaixo e `AI_USAGE.md`).
+- ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (Jest) e 53 testes de lógica/componente no frontend (Vitest + Testing Library) (ver "Testes" abaixo e `AI_USAGE.md`).
 - ✅ Aplicação publicada.
 - ✅ SEO básico (`sitemap.xml`, `robots.txt`) — não pedido pelo desafio, ver "Home e catálogo" abaixo.
+- ✅ Aviso de cookies (LGPD/GDPR) — não pedido pelo desafio, ver "Home e catálogo" abaixo.
 
 ### Todas as funcionalidades do produto
 
@@ -87,6 +88,7 @@ Lista mais completa do que dá pra fazer no site, além do que os requisitos do 
 - Seção "Filmes" separada, com seu próprio destaque/hero e grade, sem misturar com "Eventos em cartaz" (que é só show).
 - Tema claro/escuro, com preferência salva entre sessões.
 - **SEO**: `/sitemap.xml` gerado dinamicamente com a home + a URL de cada evento publicado (paginando a API pública até acabar, não um teto fixo), e `/robots.txt` liberando o catálogo público mas bloqueando áreas que exigem login (`/profile`, `/my-tickets`, `/organizer`, `/gate`, `/t/`) — nenhuma delas tem valor de indexação, e a última (link de compartilhamento de ingresso) nem deveria aparecer num resultado de busca. Sitemap se regenera a cada hora (não só no build), então evento novo publicado depois do último deploy aparece sozinho; se a API estiver fora do ar na hora de gerar, cai de volta pra só a home em vez de quebrar a página. A página de cada evento também tem título/descrição/OpenGraph próprios (em vez do título genérico do site inteiro) e dados estruturados `schema.org/Event` — o formato que o Google usa pra mostrar data, local e preço direto no resultado de busca, sem precisar entrar no site. Sem meta tag de "keywords": o Google ignora esse campo desde 2009, não teria efeito nenhum.
+- **Aviso de cookies**: banner flutuante que aparece na primeira visita, com "Aceitar" e "Somente essenciais" (mesmo padrão de mercado do LGPD/GDPR) e link pra `/privacidade` — a escolha fica salva e o banner não incomoda de novo. Hoje o site só usa `localStorage` essencial (login, tema, esta própria escolha), sem nenhum rastreamento de terceiros, mas a estrutura já fica pronta pro dia em que isso mudar.
 
 **Organizador**
 - Busca no catálogo real da Ticketmaster (shows) e do TMDb (filmes), com prefill de nome/local/data/sinopse quando disponível.
@@ -150,7 +152,7 @@ npm run test:e2e         # 4 testes e2e (sobem a aplicação de verdade, ainda c
 
 ```bash
 cd frontend
-npm test                 # 42 testes de lógica e componente (Vitest + Testing Library)
+npm test                 # 53 testes de lógica e componente (Vitest + Testing Library)
 npm run test:watch       # mesma coisa, mas observando arquivos — útil enquanto se escreve um teste novo
 ```
 
