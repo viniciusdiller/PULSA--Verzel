@@ -24,9 +24,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+// Mesmos limites do LoginDto no backend — client-side é só feedback
+// antecipado, a validação que importa continua no servidor.
 const loginSchema = z.object({
-  email: z.string().email("Informe um email válido"),
-  password: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres"),
+  email: z.string().email("Informe um email válido").max(254),
+  password: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres").max(128),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -89,7 +91,12 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="voce@elitedev.dev" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="voce@elitedev.dev"
+                        maxLength={254}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -102,7 +109,12 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        maxLength={128}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
