@@ -54,3 +54,23 @@ export interface SeatMapResponse {
   sections: Section[];
   seats: Seat[];
 }
+
+export interface OrganizerEventStats {
+  eventId: string;
+  title: string;
+  venueCity: string;
+  startsAt: string;
+  status: EventStatus;
+  capacity: number;
+  ticketsSold: number;
+  revenueCents: number;
+}
+
+export interface OrganizerStatsResponse {
+  items: OrganizerEventStats[];
+  totals: {
+    revenueCents: number;
+    ticketsSold: number;
+    eventsCount: number;
+  };
+}

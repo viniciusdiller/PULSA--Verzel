@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
+import { Wallet } from "lucide-react";
 import { useMyEventsQuery, usePublishEventMutation } from "@/hooks/use-organizer-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,14 +61,22 @@ export default function OrganizerDashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Organizador</p>
           <h1 className="font-heading text-3xl">Meus eventos</h1>
         </div>
-        <Button asChild>
-          <Link href="/organizer/new">+ Novo evento</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/organizer/finance">
+              <Wallet className="size-4" />
+              Financeiro
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/organizer/new">+ Novo evento</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -93,9 +102,9 @@ export default function OrganizerDashboardPage() {
               className="flex items-center justify-between rounded-md border border-border/60 p-4 transition-colors hover:border-foreground/30"
             >
               <Link href={`/organizer/${event.id}`} className="min-w-0 flex-1 hover:cursor-pointer">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex items-start justify-between gap-2">
                   <h2 className="font-heading text-lg">{event.title}</h2>
-                  <Badge variant={STATUS_VARIANT[event.status]}>
+                  <Badge variant={STATUS_VARIANT[event.status]} className="mt-1 shrink-0">
                     {STATUS_LABEL[event.status]}
                   </Badge>
                 </div>

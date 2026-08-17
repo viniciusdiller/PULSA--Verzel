@@ -157,6 +157,17 @@ export class EventsController {
     return this.eventsService.findFeatured(query.source);
   }
 
+  @Get('organizer/stats')
+  @Roles(Role.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Painel financeiro: receita e ingressos vendidos por evento do organizador autenticado',
+  })
+  getStats(@CurrentUser() user: AuthenticatedUser) {
+    return this.eventsService.getOrganizerStats(user.id);
+  }
+
   @Get('organizer/mine')
   @Roles(Role.ORGANIZER)
   @ApiBearerAuth()
