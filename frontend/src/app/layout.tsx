@@ -26,6 +26,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://projeto-de-desenvolvimento-verzel.vercel.app",
+  ),
   title: "PULSA — Ingressos para festivais, festas e grandes jogos",
   description: "Publique eventos, reserve seu lugar, receba seu ingresso.",
 };

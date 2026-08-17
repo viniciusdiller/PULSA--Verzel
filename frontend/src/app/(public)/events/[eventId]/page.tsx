@@ -1,77 +1,95 @@
-"use client";
+import type { Metadata } from "next";
+import { EventDetailClient } from "./event-detail-client";
+import { formatCentsToBRL } from "@/lib/format";
 
-import Image from "next/image";
-import Link from "next/link";
-import { use } from "react";
-import { useEventQuery } from "@/hooks/use-events";
-import { Button } from "@/components/ui/button";
-import { PageLoader } from "@/components/ui/page-loader";
-import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api";
 
-export default function EventDetailPage(props: PageProps<"/events/[eventId]">) {
-  const { eventId } = use(props.params);
-  const { data: event, isLoading, isError } = useEventQuery(eventId);
+interface EventForMetadata {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  startsAt: string;
+  venueName: string;
+  venueCity: string;
+  venueAddress: string;
+  fromPriceCents: number;
+}
 
-  if (isLoading) {
-    return (
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
-        <PageLoader label="Carregando evento..." />
-      </main>
-    );
+// Página do evento é a única com valor real de SEO individual (a home é
+// genérica, o resto exige login) — sem isso, toda página do site aparecia
+// no Google com o mesmo título/descrição do layout raiz.
+async function fetchEvent(eventId: string): Promise<EventForMetadata | null> {
+  try {
+    const res = await fetch(`${API_URL}/events/${eventId}`, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    return (await res.json()) as EventForMetadata;
+  } catch {
+    return null;
   }
+}
 
-  if (isError || !event) {
-    return (
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-2 px-6 py-24 text-center">
-        <h1 className="font-heading text-2xl">Evento não encontrado</h1>
-        <p className="text-muted-foreground">
-          Ele pode não existir mais ou ainda não ter sido publicado.
-        </p>
-        <Button asChild variant="outline" className="mt-4">
-          <Link href="/">Voltar para eventos</Link>
-        </Button>
-      </main>
-    );
-  }
+export async function generateMetadata(
+  props: PageProps<"/events/[eventId]">,
+): Promise<Metadata> {
+  const { eventId } = await props.params;
+  const event = await fetchEvent(eventId);
+  if (!event) return {};
+
+  const title = `${event.title} — ${event.venueCity} | PULSA`;
+  const description = `${event.venueName}, ${event.venueCity}. A partir de ${formatCentsToBRL(event.fromPriceCents)}. ${event.description}`.slice(0, 160);
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: event.imageUrl ? [event.imageUrl] : undefined,
+    },
+  };
+}
+
+export default async function EventDetailPage(props: PageProps<"/events/[eventId]">) {
+  const { eventId } = await props.params;
+  const event = await fetchEvent(eventId);
+
+  // Schema.org Event — habilita o rich result do Google (data, local,
+  // preço direto no resultado de busca, sem precisar entrar no site).
+  // dangerouslySetInnerHTML aqui é seguro: o conteúdo vem só de campos
+  // que nós mesmos buscamos da API (não de input de usuário renderizado
+  // como HTML), e JSON.stringify escapa tudo antes de virar string.
+  const jsonLd = event
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        name: event.title,
+        startDate: event.startsAt,
+        location: {
+          "@type": "Place",
+          name: event.venueName,
+          address: `${event.venueAddress}, ${event.venueCity}`,
+        },
+        image: event.imageUrl ?? undefined,
+        description: event.description,
+        offers: {
+          "@type": "Offer",
+          price: (event.fromPriceCents / 100).toFixed(2),
+          priceCurrency: "BRL",
+          availability: "https://schema.org/InStock",
+        },
+      }
+    : null;
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
-      <Link href="/" className="mb-4 inline-block text-sm text-muted-foreground hover:underline">
-        ← Voltar
-      </Link>
-
-      {event.imageUrl && (
-        <div className="relative mb-8 aspect-video w-full overflow-hidden rounded-lg bg-muted">
-          <Image src={event.imageUrl} alt={event.title} fill className="object-cover" />
-        </div>
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       )}
-
-      <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">
-        {event.venueCity} • {formatEventDateTime(event.startsAt)}
-      </p>
-      <h1 className="font-heading mt-2 text-4xl">{event.title}</h1>
-      <p className="mt-1 text-muted-foreground">
-        {event.venueName} — {event.venueAddress}
-      </p>
-
-      <p className="mt-6 max-w-2xl leading-relaxed">{event.description}</p>
-
-      <div className="mt-8 space-y-2">
-        <h2 className="font-heading text-xl">Setores</h2>
-        {event.sections.map((section) => (
-          <div
-            key={section.id}
-            className="flex items-center justify-between rounded-md border border-border/60 px-4 py-3"
-          >
-            <span>{section.name}</span>
-            <span className="text-muted-foreground">{formatCentsToBRL(section.priceCents)}</span>
-          </div>
-        ))}
-      </div>
-
-      <Button asChild size="lg" className="mt-8">
-        <Link href={`/events/${event.id}/checkout`}>Escolher assento</Link>
-      </Button>
-    </main>
+      <EventDetailClient eventId={eventId} />
+    </>
   );
 }
