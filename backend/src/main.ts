@@ -39,9 +39,15 @@ async function bootstrap() {
     }),
   );
 
+  // localhost:3000 só entra na allowlist fora de produção — não tem
+  // motivo pra API em produção aceitar requisições de origem local, e
+  // isso reduz a superfície de ataque (ex. uma página maliciosa rodando
+  // num servidor local durante o desenvolvimento de outra pessoa não
+  // teria como usar CORS pra falar com a API de produção).
   const corsOrigin = configService.getOrThrow<string>('CORS_ORIGIN');
+  const isProduction = configService.get<string>('NODE_ENV') === 'production';
   app.enableCors({
-    origin: [corsOrigin, 'http://localhost:3000'],
+    origin: isProduction ? [corsOrigin] : [corsOrigin, 'http://localhost:3000'],
     // Autenticação é via header Authorization (localStorage), não cookie —
     // não há necessidade de credentials cross-site aqui.
     credentials: false,
