@@ -63,6 +63,7 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 - ✅ Docker Compose (Postgres local persistente).
 - ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (Jest) e 42 testes de lógica/componente no frontend (Vitest + Testing Library) (ver "Testes" abaixo e `AI_USAGE.md`).
 - ✅ Aplicação publicada.
+- ✅ SEO básico (`sitemap.xml`, `robots.txt`) — não pedido pelo desafio, ver "Home e catálogo" abaixo.
 
 ### Todas as funcionalidades do produto
 
@@ -85,6 +86,7 @@ Lista mais completa do que dá pra fazer no site, além do que os requisitos do 
 - Busca por nome, filtro por cidade e por categoria — cidades/categorias calculadas a partir dos eventos reais existentes, não uma lista fixa.
 - Seção "Filmes" separada, com seu próprio destaque/hero e grade, sem misturar com "Eventos em cartaz" (que é só show).
 - Tema claro/escuro, com preferência salva entre sessões.
+- **SEO**: `/sitemap.xml` gerado dinamicamente com a home + a URL de cada evento publicado (paginando a API pública até acabar, não um teto fixo), e `/robots.txt` liberando o catálogo público mas bloqueando áreas que exigem login (`/profile`, `/my-tickets`, `/organizer`, `/gate`, `/t/`) — nenhuma delas tem valor de indexação, e a última (link de compartilhamento de ingresso) nem deveria aparecer num resultado de busca. Sitemap se regenera a cada hora (não só no build), então evento novo publicado depois do último deploy aparece sozinho; se a API estiver fora do ar na hora de gerar, cai de volta pra só a home em vez de quebrar a página.
 
 **Organizador**
 - Busca no catálogo real da Ticketmaster (shows) e do TMDb (filmes), com prefill de nome/local/data/sinopse quando disponível.
