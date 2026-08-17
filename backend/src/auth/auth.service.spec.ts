@@ -111,6 +111,7 @@ describe('AuthService', () => {
 
     it('rejeita com "Credenciais inválidas." quando o email não existe', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
         service.login({
@@ -118,8 +119,28 @@ describe('AuthService', () => {
           password: 'qualquer123',
         }),
       ).rejects.toThrow(new UnauthorizedException('Credenciais inválidas.'));
-      expect(bcrypt.compare).not.toHaveBeenCalled();
       expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('roda bcrypt.compare mesmo quando o email não existe, contra um hash fixo (mitiga enumeração de usuários por tempo de resposta)', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.login({
+          email: 'nao-existe@elitedev.dev',
+          password: 'qualquer123',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+      const compareMock = bcrypt.compare as jest.Mock<
+        Promise<boolean>,
+        [string, string]
+      >;
+      const [, hashUsed] = compareMock.mock.calls[0];
+      expect(hashUsed).not.toBe(dbUser.passwordHash);
+      expect(hashUsed.length).toBeGreaterThan(0);
     });
 
     it('rejeita com "Credenciais inválidas." quando a senha está errada', async () => {
@@ -134,6 +155,7 @@ describe('AuthService', () => {
 
     it('retorna exatamente a mesma mensagem de erro para email inexistente e senha errada (evita enumeração de usuários)', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
       let messageForMissingUser = '';
       try {
         await service.login({
