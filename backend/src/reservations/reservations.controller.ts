@@ -58,4 +58,16 @@ export class ReservationsController {
   ) {
     return this.reservationsService.cancel(user.id, id);
   }
+
+  @Post(':id/cancel-paid')
+  @ApiOperation({
+    summary:
+      'Cancela um ingresso já pago (antes do evento acontecer, sem ter sido usado na portaria), reembolsando o valor em saldo',
+  })
+  cancelPaid(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.reservationsService.cancelPaid(user.id, id);
+  }
 }

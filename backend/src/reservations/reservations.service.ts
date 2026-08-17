@@ -14,6 +14,7 @@ import {
   ReservationStatus,
   SeatStatus,
   Ticket,
+  TicketStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TicketsService } from '../tickets/tickets.service';
@@ -345,6 +346,89 @@ export class ReservationsService {
       });
 
       return tx.reservation.findUniqueOrThrow({ where: { id: reservationId } });
+    });
+  }
+
+  // Desistência depois de já ter pago — diferente de cancel() (que só
+  // existe pra desistir ANTES de pagar). Reembolsa o valor cheio em saldo
+  // da plataforma, mesma convenção já usada quando um organizador cancela
+  // um evento inteiro com reservas pagas (events.service.ts,
+  // cancelWithRefund) — saldo cobre o total pago, independente de ter
+  // vindo de cartão, saldo, ou uma mistura dos dois.
+  async cancelPaid(
+    customerId: string,
+    reservationId: string,
+  ): Promise<{ reservation: Reservation; refundedCents: number }> {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: { ticket: true, event: true },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva não encontrada.');
+    }
+    if (reservation.customerId !== customerId) {
+      throw new ForbiddenException('Esta reserva não pertence a você.');
+    }
+    if (reservation.status !== ReservationStatus.PAID) {
+      throw new BadRequestException(
+        `Não é possível cancelar uma reserva com status ${reservation.status}.`,
+      );
+    }
+    if (
+      !reservation.ticket ||
+      reservation.ticket.status !== TicketStatus.VALID
+    ) {
+      throw new BadRequestException(
+        'Este ingresso já foi utilizado ou invalidado — não é possível cancelar.',
+      );
+    }
+    if (reservation.event.startsAt.getTime() <= Date.now()) {
+      throw new BadRequestException(
+        'Não é possível cancelar depois que o evento já aconteceu.',
+      );
+    }
+
+    const ticketId = reservation.ticket.id;
+
+    return this.prisma.$transaction(async (tx) => {
+      // Mesma estratégia de "atualização condicional + checar linhas
+      // afetadas" usada em cancel()/gate — cobre o caso raro de o
+      // ingresso ser validado na portaria entre a leitura acima e este
+      // update (ex. duas abas, ou o cliente já entrou no evento).
+      const reservationUpdate = await tx.reservation.updateMany({
+        where: { id: reservationId, status: ReservationStatus.PAID },
+        data: { status: ReservationStatus.CANCELED },
+      });
+      if (reservationUpdate.count === 0) {
+        throw new BadRequestException('Esta reserva não está mais paga.');
+      }
+
+      const ticketUpdate = await tx.ticket.updateMany({
+        where: { id: ticketId, status: TicketStatus.VALID },
+        data: { status: TicketStatus.VOID },
+      });
+      if (ticketUpdate.count === 0) {
+        throw new BadRequestException(
+          'Este ingresso já foi utilizado ou invalidado — não é possível cancelar.',
+        );
+      }
+
+      await tx.seat.updateMany({
+        where: { id: reservation.seatId, status: SeatStatus.SOLD },
+        data: { status: SeatStatus.AVAILABLE },
+      });
+
+      await tx.user.update({
+        where: { id: customerId },
+        data: { balanceCents: { increment: reservation.totalCents } },
+      });
+
+      const updated = await tx.reservation.findUniqueOrThrow({
+        where: { id: reservationId },
+      });
+
+      return { reservation: updated, refundedCents: reservation.totalCents };
     });
   }
 

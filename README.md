@@ -75,7 +75,7 @@ Lista mais completa do que dá pra fazer no site, além do que os requisitos do 
 - Sair da sessão neste dispositivo.
 
 **Saldo** (só para clientes)
-- Créditos em saldo (`balanceCents`) só existem por um motivo: um organizador cancelou um evento com ingressos já pagos. Nesse caso, todo cliente com reserva paga naquele evento é reembolsado automaticamente em saldo da plataforma (não tem devolução via cartão simulada) e recebe um aviso na próxima vez que abrir o site.
+- Créditos em saldo (`balanceCents`) vêm de duas origens: um organizador cancelando um evento com ingressos já pagos (reembolso automático pra todo cliente afetado, com aviso na próxima vez que abrir o site), ou o próprio cliente cancelando um ingresso individual já pago (ver "Ingressos" abaixo). Nenhum dos dois casos devolve via cartão simulado — sempre em saldo da plataforma.
 - No checkout, se o cliente tiver saldo, ele é aplicado **primeiro**, cobrindo o quanto der do valor da reserva — só o restante (se sobrar algo) vai pro cartão. Se o saldo cobrir o total, o pagamento é aprovado direto, sem nem simular cartão.
 - Saldo só aparece pra quem realmente pode ter saldo (cliente) — organizador e portaria não veem esse campo, pra não mostrar "R$ 0,00" sem sentido.
 
@@ -102,6 +102,7 @@ Lista mais completa do que dá pra fazer no site, além do que os requisitos do 
 - QR code assinado (JWT) por ingresso, mais um código curto de 6 dígitos como alternativa de digitação.
 - Link de compartilhamento público (`/t/:shareSlug`) — quem recebe o link vê o QR sem precisar de login.
 - "Meus ingressos" agrupado por evento (abas Ativos/Passados), com paginação dentro de cada evento quando passa de 4 ingressos.
+- **Cancelar um ingresso já pago** (botão "Cancelar ingresso" em cada ingresso válido), com reembolso do valor total em saldo — só disponível antes do evento acontecer e antes de o ingresso ter sido validado na portaria. Libera o assento na hora pra outra pessoa comprar.
 
 **Portaria**
 - Leitura por câmera ou digitação manual do código curto.
