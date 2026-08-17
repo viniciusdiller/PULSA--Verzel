@@ -40,6 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: SITE_URL, changeFrequency: "daily", priority: 1 },
+    { url: `${SITE_URL}/privacidade`, changeFrequency: "yearly", priority: 0.2 },
     ...events.map((event) => ({
       url: `${SITE_URL}/events/${event.id}`,
       lastModified: event.updatedAt ?? event.startsAt,
