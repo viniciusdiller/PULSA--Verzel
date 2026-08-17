@@ -1,13 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { Armchair, Clock3, Copy, MapPin, Share2 } from "lucide-react";
+import { isAxiosError } from "axios";
+import { Armchair, Clock3, Copy, MapPin, Share2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatEventDateTime } from "@/lib/format";
+import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
+import { useCancelPaidTicketMutation } from "@/hooks/use-tickets";
 import type { TicketWithDetails } from "@/types/ticket";
 
 const STATUS_LABEL: Record<TicketWithDetails["status"], string> = {
@@ -25,10 +37,30 @@ const STATUS_VARIANT: Record<TicketWithDetails["status"], "success" | "secondary
 export function TicketCard({
   ticket,
   showShareButton = true,
+  allowCancel = false,
 }: {
   ticket: Omit<TicketWithDetails, "ownerId">;
   showShareButton?: boolean;
+  // Off por padrão de propósito: este componente também é usado na
+  // página pública de compartilhamento (/t/[shareSlug]), sem
+  // autenticação — cancelar só pode aparecer em "Meus ingressos", onde
+  // quem está olhando é comprovadamente o dono do ingresso.
+  allowCancel?: boolean;
 }) {
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const cancelMutation = useCancelPaidTicketMutation();
+
+  // Date.now() é impuro — não pode rodar direto no corpo do componente
+  // (regra react-hooks/purity). Como cada TicketCard é montado com uma
+  // key estável por ticket (nunca reaproveitado pra outro ticket), o
+  // inicializador preguiçoso do useState roda exatamente uma vez por
+  // ingresso, o que já é o suficiente aqui — não precisa recalcular a
+  // cada render.
+  const [eventAlreadyStarted] = useState(
+    () => new Date(ticket.event.startsAt).getTime() <= Date.now(),
+  );
+  const canCancel = allowCancel && ticket.status === "VALID" && !eventAlreadyStarted;
+
   async function copyShareLink() {
     const url = `${window.location.origin}/t/${ticket.shareSlug}`;
     await navigator.clipboard.writeText(url);
@@ -38,6 +70,21 @@ export function TicketCard({
   async function copyCode() {
     await navigator.clipboard.writeText(ticket.shortCode);
     toast.success("Código copiado.");
+  }
+
+  async function handleCancel() {
+    try {
+      const result = await cancelMutation.mutateAsync(ticket.reservationId);
+      setCancelDialogOpen(false);
+      toast.success(
+        `Ingresso cancelado. ${formatCentsToBRL(result.refundedCents)} devolvidos em saldo na plataforma.`,
+      );
+    } catch (error) {
+      const message = isAxiosError(error)
+        ? (error.response?.data as { message?: string } | undefined)?.message
+        : undefined;
+      toast.error(message ?? "Não foi possível cancelar este ingresso.");
+    }
   }
 
   return (
@@ -125,14 +172,58 @@ export function TicketCard({
             </p>
           </div>
 
-          {showShareButton && (
-            <Button variant="outline" size="sm" onClick={copyShareLink} className="mt-2">
-              <Share2 className="size-3.5" />
-              Copiar link de compartilhamento
-            </Button>
-          )}
+          <div className="mt-2 flex flex-wrap justify-center gap-2 sm:justify-start">
+            {showShareButton && (
+              <Button variant="outline" size="sm" onClick={copyShareLink}>
+                <Share2 className="size-3.5" />
+                Copiar link de compartilhamento
+              </Button>
+            )}
+            {canCancel && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setCancelDialogOpen(true)}
+              >
+                <XCircle className="size-3.5" />
+                Cancelar ingresso
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar ingresso de &quot;{ticket.event.title}&quot;?</DialogTitle>
+            <DialogDescription>
+              O assento {ticket.seat.label} volta a ficar disponível pra outra pessoa, e o valor
+              pago é devolvido em saldo na plataforma — não tem como desfazer depois.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelMutation.isPending}
+              onClick={handleCancel}
+            >
+              {cancelMutation.isPending ? (
+                <>
+                  <LoaderSignalBars size="sm" className="mr-1.5" />
+                  Cancelando...
+                </>
+              ) : (
+                "Cancelar ingresso"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

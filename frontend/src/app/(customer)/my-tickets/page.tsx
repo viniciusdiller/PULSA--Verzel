@@ -191,7 +191,7 @@ export default function MyTicketsPage() {
 
           <div className="grid gap-6 md:grid-cols-2">
             {visibleTickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
+              <TicketCard key={ticket.id} ticket={ticket} allowCancel />
             ))}
           </div>
 
