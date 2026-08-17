@@ -216,6 +216,10 @@ O plano original era Railway pro backend, mas o trial gratuito acabou no meio do
 - O QR renderizado em "Meus ingressos" sempre usa fundo branco fixo, mesmo no modo escuro — é proposital: leitores de QR precisam de alto contraste, então essa é a única superfície que não segue o tema.
 - Se por algum motivo `TICKETMASTER_API_KEY` ou `TMDB_API_KEY` faltarem no ambiente (ex. reproduzindo o deploy do zero), a busca no catálogo falha de forma graciosa: `GET /catalog/events/search` retorna `503` com uma mensagem clara em vez de quebrar (ver `backend/src/catalog/catalog.service.ts`). Todo o resto da plataforma continua funcionando normalmente mesmo sem essas chaves, incluindo os 2 eventos mínimos que o seed cria à mão (sem depender de nenhuma API externa) só pra portaria e "Meus ingressos" terem o que mostrar de cara. Os demais eventos do catálogo (Coachella, Matrix, etc.) foram publicados de verdade através do fluxo do organizador, batendo nas APIs reais — ver "Todas as funcionalidades do produto" abaixo.
 
+## Segurança
+
+Auditoria completa (autenticação, autorização, injeção, dependências, headers) em [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) — o que foi encontrado e corrigido, e o que já estava certo desde antes com a verificação que confirma isso.
+
 ## Documentação de uso de IA
 
 Ver [`AI_USAGE.md`](AI_USAGE.md).

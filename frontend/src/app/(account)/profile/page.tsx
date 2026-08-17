@@ -28,22 +28,49 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+// Limites espelhando os do backend (UpdateProfileDto) — o objetivo aqui
+// não é segurança (isso já é garantido no servidor), é dar feedback
+// antes do submit em vez de deixar a pessoa descobrir o limite só
+// quando a requisição volta com 400.
+const NAME_MAX_LENGTH = 100;
+const PASSWORD_MAX_LENGTH = 128;
+
 const nameSchema = z.object({
-  name: z.string().min(2, "Informe pelo menos 2 caracteres"),
+  name: z.string().min(2, "Informe pelo menos 2 caracteres").max(NAME_MAX_LENGTH),
 });
 type NameFormValues = z.infer<typeof nameSchema>;
 
 const passwordSchema = z
   .object({
-    currentPassword: z.string().min(6, "Informe sua senha atual"),
-    newPassword: z.string().min(6, "A nova senha precisa ter pelo menos 6 caracteres"),
-    confirmPassword: z.string().min(6, "Confirme a nova senha"),
+    currentPassword: z.string().min(6, "Informe sua senha atual").max(PASSWORD_MAX_LENGTH),
+    newPassword: z
+      .string()
+      .min(6, "A nova senha precisa ter pelo menos 6 caracteres")
+      .max(PASSWORD_MAX_LENGTH),
+    confirmPassword: z.string().min(6, "Confirme a nova senha").max(PASSWORD_MAX_LENGTH),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "As senhas não coincidem",
     path: ["confirmPassword"],
   });
 type PasswordFormValues = z.infer<typeof passwordSchema>;
+
+// Só aparece perto do limite — contar caractere a cada tecla digitada
+// desde o campo vazio é ruído, não ajuda ninguém a perceber um limite
+// que só importa quando ele está prestes a ser alcançado.
+function CharacterCounter({ length, max }: { length: number; max: number }) {
+  if (length < max * 0.8) return null;
+  return (
+    <span
+      className={cn(
+        "text-xs tabular-nums",
+        length >= max ? "text-destructive" : "text-muted-foreground",
+      )}
+    >
+      {length}/{max}
+    </span>
+  );
+}
 
 // Linha perfurada — mesmo motivo de "canhoto de ingresso" usado no
 // wordmark do header e nos cards de ticket (ticket-card.tsx). Reaproveitada
@@ -216,9 +243,16 @@ export default function ProfilePage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>Nome</FormLabel>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <FormLabel>Nome</FormLabel>
+                      <CharacterCounter length={field.value.length} max={NAME_MAX_LENGTH} />
+                    </div>
                     <FormControl>
-                      <Input className={underlineInputClass} {...field} />
+                      <Input
+                        className={underlineInputClass}
+                        maxLength={NAME_MAX_LENGTH}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -254,12 +288,16 @@ export default function ProfilePage() {
                 name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Senha atual</FormLabel>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <FormLabel>Senha atual</FormLabel>
+                      <CharacterCounter length={field.value.length} max={PASSWORD_MAX_LENGTH} />
+                    </div>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="••••••••"
                         className={underlineInputClass}
+                        maxLength={PASSWORD_MAX_LENGTH}
                         {...field}
                       />
                     </FormControl>
@@ -272,12 +310,16 @@ export default function ProfilePage() {
                 name="newPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nova senha</FormLabel>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <FormLabel>Nova senha</FormLabel>
+                      <CharacterCounter length={field.value.length} max={PASSWORD_MAX_LENGTH} />
+                    </div>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="••••••••"
                         className={underlineInputClass}
+                        maxLength={PASSWORD_MAX_LENGTH}
                         {...field}
                       />
                     </FormControl>
@@ -296,6 +338,7 @@ export default function ProfilePage() {
                         type="password"
                         placeholder="••••••••"
                         className={underlineInputClass}
+                        maxLength={PASSWORD_MAX_LENGTH}
                         {...field}
                       />
                     </FormControl>
