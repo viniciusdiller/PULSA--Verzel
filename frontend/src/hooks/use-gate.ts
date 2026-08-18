@@ -18,22 +18,55 @@ export function useValidateTicketMutation(eventId: string) {
   });
 }
 
-export function useGateHistoryEventsQuery(page: number, pageSize: number) {
+export function useGateHistoryEventsQuery(
+  page: number,
+  pageSize: number,
+  search = "",
+) {
   return useQuery({
-    queryKey: ["gate", "history", "events", { page, pageSize }],
+    queryKey: ["gate", "history", "events", { page, pageSize, search }],
     queryFn: async () => {
-      const { data } = await apiClient.get<GateHistoryEventsPage>("/gate/history/events", {
-        params: { page, pageSize },
-      });
+      const { data } = await apiClient.get<GateHistoryEventsPage>(
+        "/gate/history/events",
+        {
+          params: search ? { page, pageSize, search } : { page, pageSize },
+        },
+      );
       return data;
     },
     placeholderData: keepPreviousData,
   });
 }
 
-export function useGateHistoryTicketsQuery(eventId: string, page: number, pageSize: number) {
+export function useExportGateHistoryCsv() {
+  return useMutation<Blob, unknown, string>({
+    mutationFn: async (search: string) => {
+      const { data } = await apiClient.get<Blob>(
+        "/gate/history/events/export",
+        {
+          params: search ? { search } : undefined,
+          responseType: "blob",
+        },
+      );
+      return data;
+    },
+  });
+}
+
+export function useGateHistoryTicketsQuery(
+  eventId: string,
+  page: number,
+  pageSize: number,
+) {
   return useQuery({
-    queryKey: ["gate", "history", "events", eventId, "tickets", { page, pageSize }],
+    queryKey: [
+      "gate",
+      "history",
+      "events",
+      eventId,
+      "tickets",
+      { page, pageSize },
+    ],
     queryFn: async () => {
       const { data } = await apiClient.get<GateHistoryTicketsPage>(
         `/gate/history/events/${eventId}/tickets`,

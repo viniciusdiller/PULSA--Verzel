@@ -2,18 +2,25 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiProduces,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { GateService } from './gate.service';
 import { ValidateTicketDto } from './dto/validate-ticket.dto';
 import { GateHistoryTicketsQueryDto } from './dto/gate-history-tickets-query.dto';
 import { GateHistoryEventsQueryDto } from './dto/gate-history-events-query.dto';
+import { GateHistoryExportQueryDto } from './dto/gate-history-export-query.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -52,6 +59,21 @@ export class GateController {
     @Query() query: GateHistoryEventsQueryDto,
   ) {
     return this.gateService.listValidatedEvents(user.id, query);
+  }
+
+  @Get('history/events/export')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="pulsa-validacoes.csv"')
+  @ApiProduces('text/csv')
+  @ApiOperation({
+    summary: 'Exporta em CSV as validações realizadas por este atendente',
+  })
+  exportHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GateHistoryExportQueryDto,
+  ) {
+    return this.gateService.exportValidatedTickets(user.id, query.search);
   }
 
   @Get('history/events/:eventId/tickets')

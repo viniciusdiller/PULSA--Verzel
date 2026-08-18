@@ -333,6 +333,62 @@ describe('GateService', () => {
       });
     });
 
+    it('filtra por título no servidor antes de agrupar validações', async () => {
+      prisma.event.findMany
+        .mockResolvedValueOnce([{ id: EVENT_ID }])
+        .mockResolvedValueOnce([
+          {
+            id: EVENT_ID,
+            title: 'Show Principal',
+            imageUrl: null,
+            venueCity: 'São Paulo',
+            startsAt: new Date('2026-02-01T00:00:00Z'),
+          },
+        ]);
+      prisma.ticket.groupBy.mockResolvedValue([
+        {
+          eventId: EVENT_ID,
+          _count: { _all: 2 },
+          _max: { usedAt: new Date('2026-01-02T00:00:00Z') },
+        },
+      ]);
+
+      const result = await service.listValidatedEvents('gate-1', {
+        search: '  show  ',
+      });
+
+      expect(prisma.event.findMany).toHaveBeenNthCalledWith(1, {
+        where: {
+          title: { contains: 'show', mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      expect(prisma.ticket.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            usedByGateUserId: 'gate-1',
+            status: TicketStatus.USED,
+            eventId: { in: [EVENT_ID] },
+          },
+        }),
+      );
+      expect(result.items[0]).toMatchObject({
+        eventId: EVENT_ID,
+        eventTitle: 'Show Principal',
+      });
+    });
+
+    it('retorna vazio sem agrupar quando a busca não encontra eventos', async () => {
+      prisma.event.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.listValidatedEvents('gate-1', {
+        search: 'evento inexistente',
+      });
+
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 4 });
+      expect(prisma.ticket.groupBy).not.toHaveBeenCalled();
+    });
+
     it('ignora silenciosamente um eventId do groupBy sem Event correspondente', async () => {
       prisma.ticket.groupBy.mockResolvedValue([
         {
@@ -377,6 +433,65 @@ describe('GateService', () => {
       expect(result).toMatchObject({ total: 3, page: 2, pageSize: 1 });
       expect(result.items).toHaveLength(1);
       expect(result.items[0].eventId).toBe(OTHER_EVENT_ID);
+    });
+  });
+
+  describe('exportValidatedTickets', () => {
+    it('exporta somente validações do atendente e escapa células perigosas', async () => {
+      prisma.ticket.findMany.mockResolvedValue([
+        {
+          shortCode: '482913',
+          usedAt: new Date('2026-01-01T20:00:00Z'),
+          seat: { label: 'A1' },
+          owner: { name: '=HYPERLINK("x")' },
+          event: {
+            title: 'Festival, "Noite"',
+            startsAt: new Date('2026-02-01T20:00:00Z'),
+            venueCity: 'São Paulo\nCentro',
+          },
+        },
+      ]);
+
+      const csv = await service.exportValidatedTickets(
+        'gate-1',
+        '  festival  ',
+      );
+
+      expect(prisma.ticket.findMany).toHaveBeenCalledWith({
+        where: {
+          usedByGateUserId: 'gate-1',
+          status: TicketStatus.USED,
+          event: {
+            title: { contains: 'festival', mode: 'insensitive' },
+          },
+        },
+        include: {
+          seat: { select: { label: true } },
+          owner: { select: { name: true } },
+          event: { select: { title: true, startsAt: true, venueCity: true } },
+        },
+        orderBy: { usedAt: 'desc' },
+      });
+      expect(csv).toContain('\uFEFFEvento,Data do evento');
+      expect(csv).toContain('"Festival, ""Noite"""');
+      expect(csv).toContain('"São Paulo\nCentro"');
+      expect(csv).toContain('"\'=HYPERLINK(""x"")"');
+      expect(csv.endsWith('\r\n')).toBe(true);
+    });
+
+    it('exporta sem filtro quando search não é informado', async () => {
+      prisma.ticket.findMany.mockResolvedValue([]);
+
+      await service.exportValidatedTickets('gate-1');
+
+      expect(prisma.ticket.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            usedByGateUserId: 'gate-1',
+            status: TicketStatus.USED,
+          },
+        }),
+      );
     });
   });
 

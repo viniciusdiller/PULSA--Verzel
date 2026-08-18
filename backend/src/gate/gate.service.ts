@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Ticket, TicketStatus } from '@prisma/client';
+import { Prisma, Ticket, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GateHistoryTicketsQueryDto } from './dto/gate-history-tickets-query.dto';
 import { GateHistoryEventsQueryDto } from './dto/gate-history-events-query.dto';
@@ -62,6 +62,14 @@ type TicketWithRelations = Ticket & {
   seat: { label: string };
   event: { title: string };
 };
+
+function escapeCsvCell(value: string | number | null | undefined): string {
+  const normalized = value == null ? '' : String(value);
+  const safeValue = /^[=+\-@]/.test(normalized) ? `'${normalized}` : normalized;
+  return /[",\r\n]/.test(safeValue)
+    ? `"${safeValue.replace(/"/g, '""')}"`
+    : safeValue;
+}
 
 @Injectable()
 export class GateService {
@@ -178,10 +186,29 @@ export class GateService {
   ): Promise<GateHistoryEventsPage> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 4;
+    const search = query.search?.trim() || undefined;
+
+    let matchingEventIds: string[] | undefined;
+    if (search) {
+      const matchingEvents = await this.prisma.event.findMany({
+        where: {
+          title: { contains: search, mode: Prisma.QueryMode.insensitive },
+        },
+        select: { id: true },
+      });
+      matchingEventIds = matchingEvents.map((event) => event.id);
+      if (matchingEventIds.length === 0) {
+        return { items: [], total: 0, page, pageSize };
+      }
+    }
 
     const grouped = await this.prisma.ticket.groupBy({
       by: ['eventId'],
-      where: { usedByGateUserId: gateUserId, status: TicketStatus.USED },
+      where: {
+        usedByGateUserId: gateUserId,
+        status: TicketStatus.USED,
+        ...(matchingEventIds ? { eventId: { in: matchingEventIds } } : {}),
+      },
       _count: { _all: true },
       _max: { usedAt: true },
       orderBy: { _max: { usedAt: 'desc' } },
@@ -225,6 +252,60 @@ export class GateService {
       );
 
     return { items, total, page, pageSize };
+  }
+
+  async exportValidatedTickets(
+    gateUserId: string,
+    search?: string,
+  ): Promise<string> {
+    const normalizedSearch = search?.trim() || undefined;
+    const where = {
+      usedByGateUserId: gateUserId,
+      status: TicketStatus.USED,
+      ...(normalizedSearch
+        ? {
+            event: {
+              title: {
+                contains: normalizedSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+          }
+        : {}),
+    };
+
+    const tickets = await this.prisma.ticket.findMany({
+      where,
+      include: {
+        seat: { select: { label: true } },
+        owner: { select: { name: true } },
+        event: { select: { title: true, startsAt: true, venueCity: true } },
+      },
+      orderBy: { usedAt: 'desc' },
+    });
+
+    const header = [
+      'Evento',
+      'Data do evento',
+      'Cidade',
+      'Assento',
+      'Cliente',
+      'Código curto',
+      'Validado em',
+    ];
+    const rows = tickets.map((ticket) => [
+      ticket.event.title,
+      ticket.event.startsAt.toISOString(),
+      ticket.event.venueCity,
+      ticket.seat.label,
+      ticket.owner.name,
+      ticket.shortCode,
+      ticket.usedAt?.toISOString() ?? '',
+    ]);
+
+    return `\uFEFF${[header, ...rows]
+      .map((row) => row.map(escapeCsvCell).join(','))
+      .join('\r\n')}\r\n`;
   }
 
   // Sem $transaction de propósito: diferente da listagem pública/do

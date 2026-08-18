@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Role } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
@@ -32,7 +34,10 @@ describe('App (e2e)', () => {
           count: jest.fn().mockResolvedValue(0),
           findUnique: jest.fn().mockResolvedValue(null),
         },
-        ticket: { findUnique: jest.fn().mockResolvedValue(null) },
+        ticket: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
         seat: { findMany: jest.fn().mockResolvedValue([]) },
         reservation: { findMany: jest.fn().mockResolvedValue([]) },
       })
@@ -67,6 +72,77 @@ describe('App (e2e)', () => {
 
   it('GET /api/auth/me (rota protegida) sem token responde 401', () => {
     return request(app.getHttpServer()).get('/api/auth/me').expect(401);
+  });
+
+  it('GET /api/gate/history/events/export (dados operacionais) sem token responde 401', () => {
+    return request(app.getHttpServer())
+      .get('/api/gate/history/events/export')
+      .expect(401);
+  });
+
+  it('GET /api/gate/history/events/export retorna CSV para GATE_STAFF autenticado', async () => {
+    const gateUserId = 'gate-staff-e2e-id';
+    const userFindUnique = jest.spyOn(
+      app.get(PrismaService).user,
+      'findUnique',
+    );
+    userFindUnique.mockResolvedValue({
+      id: gateUserId,
+      email: 'gate.e2e@elitedev.dev',
+      passwordHash: 'unused',
+      name: 'Gate E2E',
+      role: Role.GATE_STAFF,
+      balanceCents: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const token = app.get(JwtService).sign({
+      sub: gateUserId,
+      email: 'gate.e2e@elitedev.dev',
+      role: 'GATE_STAFF',
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/gate/history/events/export?search=festival')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.headers['content-type']).toMatch(/text\/csv/);
+        expect(res.headers['content-disposition']).toContain(
+          'pulsa-validacoes.csv',
+        );
+        expect(res.text).toContain('Evento,Data do evento,Cidade');
+      });
+  });
+
+  it('GET /api/gate/history/events/export rejeita CUSTOMER mesmo com JWT válido', async () => {
+    const customerId = 'customer-e2e-id';
+    const userFindUnique = jest.spyOn(
+      app.get(PrismaService).user,
+      'findUnique',
+    );
+    userFindUnique.mockResolvedValue({
+      id: customerId,
+      email: 'customer.e2e@elitedev.dev',
+      passwordHash: 'unused',
+      name: 'Customer E2E',
+      role: Role.CUSTOMER,
+      balanceCents: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const token = app.get(JwtService).sign({
+      sub: customerId,
+      email: 'customer.e2e@elitedev.dev',
+      role: 'CUSTOMER',
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/gate/history/events/export')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
   });
 
   it('POST /api/auth/login com corpo inválido (email malformado) responde 400', () => {

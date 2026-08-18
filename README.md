@@ -6,12 +6,12 @@ Projeto desenvolvido para o desafio técnico **Elite Dev** da Verzel (2026). Uma
 
 Todas as senhas: **`senha123`**
 
-| Papel | Email | O que dá pra fazer |
-|---|---|---|
-| Organizador | `organizador@elitedev.dev` | Buscar no catálogo Ticketmaster, criar e publicar eventos |
-| Cliente | `cliente1@elitedev.dev` | Reservar assento, pagar, ver ingressos (já tem 1 válido e 1 utilizado semeados) |
-| Cliente | `cliente2@elitedev.dev` | Idem (tem 1 ingresso válido semeado em outro evento — útil pra testar "evento errado" na portaria) |
-| Portaria | `portaria@elitedev.dev` | Validar ingressos (câmera ou código digitado) |
+| Papel       | Email                      | O que dá pra fazer                                                                                 |
+| ----------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
+| Organizador | `organizador@elitedev.dev` | Buscar no catálogo Ticketmaster, criar e publicar eventos                                          |
+| Cliente     | `cliente1@elitedev.dev`    | Reservar assento, pagar, ver ingressos (já tem 1 válido e 1 utilizado semeados)                    |
+| Cliente     | `cliente2@elitedev.dev`    | Idem (tem 1 ingresso válido semeado em outro evento — útil pra testar "evento errado" na portaria) |
+| Portaria    | `portaria@elitedev.dev`    | Validar ingressos (câmera ou código digitado)                                                      |
 
 O `seed` já publica 2 eventos e emite 3 ingressos de demonstração (um válido, um já utilizado, um de outro evento) — dá pra testar os 4 desfechos da portaria sem precisar simular uma compra primeiro. Ver `backend/prisma/seed.ts`.
 
@@ -61,7 +61,7 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 - ✅ Cancelamento com devolução ao estoque (reserva em hold antes do pagamento).
 - ✅ Mapa de assentos "em tempo real" via polling de 5s.
 - ✅ Docker Compose (Postgres local persistente).
-- ✅ Testes automatizados — 237 testes unitários + 7 e2e no backend (Jest) e 57 testes de lógica/componente no frontend (Vitest + Testing Library), incluindo a jornada de checkout (hold, pagamento aprovado/recusado, saldo e expiração) (ver "Testes" abaixo e `AI_USAGE.md`).
+- ✅ Testes automatizados — 241 testes unitários + 8 e2e no backend (Jest) e 61 testes de lógica/componente no frontend (Vitest + Testing Library), incluindo a jornada de checkout (hold, pagamento aprovado/recusado, saldo e expiração) e a operação da portaria (busca/exportação) (ver "Testes" abaixo e `AI_USAGE.md`).
 - ✅ Aplicação publicada.
 - ✅ SEO básico (`sitemap.xml`, `robots.txt`) — não pedido pelo desafio, ver "Home e catálogo" abaixo.
 - ✅ Aviso de cookies (LGPD/GDPR) — não pedido pelo desafio, ver "Home e catálogo" abaixo.
@@ -71,17 +71,20 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 Lista mais completa do que dá pra fazer no site, além do que os requisitos do desafio exigem — inclui coisas de conta/perfil que não estão em nenhuma seção acima.
 
 **Conta e perfil** (`/profile`, qualquer papel logado)
+
 - Trocar nome de exibição.
 - Trocar senha (pede a senha atual antes).
 - Ver desde quando é usuário e um contador rápido (ingressos pro cliente, eventos pro organizador).
 - Sair da sessão neste dispositivo.
 
 **Saldo** (só para clientes)
+
 - Créditos em saldo (`balanceCents`) vêm de duas origens: um organizador cancelando um evento com ingressos já pagos (reembolso automático pra todo cliente afetado, com aviso na próxima vez que abrir o site), ou o próprio cliente cancelando um ingresso individual já pago (ver "Ingressos" abaixo). Nenhum dos dois casos devolve via cartão simulado — sempre em saldo da plataforma.
 - No checkout, se o cliente tiver saldo, ele é aplicado **primeiro**, cobrindo o quanto der do valor da reserva — só o restante (se sobrar algo) vai pro cartão. Se o saldo cobrir o total, o pagamento é aprovado direto, sem nem simular cartão.
 - Saldo só aparece pra quem realmente pode ter saldo (cliente) — organizador e portaria não veem esse campo, pra não mostrar "R$ 0,00" sem sentido.
 
 **Home e catálogo**
+
 - Hero do evento mais próximo entre os publicados (heurística real, não sorteio).
 - Carrossel de shows/filmes em destaque (curadoria manual do organizador, até 4 de cada, contados separadamente).
 - Busca por nome, filtro por cidade e por categoria — cidades/categorias calculadas a partir dos eventos reais existentes, não uma lista fixa.
@@ -91,30 +94,37 @@ Lista mais completa do que dá pra fazer no site, além do que os requisitos do 
 - **Aviso de cookies**: banner flutuante que aparece na primeira visita, com "Aceitar" e "Somente essenciais" (mesmo padrão de mercado do LGPD/GDPR) e link pra `/privacidade` — a escolha fica salva e o banner não incomoda de novo. Hoje o site só usa `localStorage` essencial (login, tema, esta própria escolha), sem nenhum rastreamento de terceiros, mas a estrutura já fica pronta pro dia em que isso mudar.
 
 **Organizador**
+
 - Busca no catálogo real da Ticketmaster (shows) e do TMDb (filmes), com prefill de nome/local/data/sinopse quando disponível.
 - Criar evento com seções/preços/fileiras configuráveis, editar, publicar/despublicar, destacar (com limite de 4 por fonte), excluir.
 - Cancelar um evento publicado com reservas pagas dispara o reembolso em saldo automaticamente pra todo cliente afetado (ver "Saldo" acima) — se não há nenhuma reserva ainda, o evento é apagado direto em vez de só marcado como cancelado.
 - **Painel financeiro** (`/organizer/finance`) — receita total, ingressos vendidos e ticket médio somando todos os eventos, mais a receita/ingressos vendidos por evento individualmente, ordenado do que mais vendeu pro que menos vendeu (eventos sem nenhuma venda aparecem com R$ 0,00 em vez de sumir da lista). "Vendido" conta reserva paga (`ReservationStatus.PAID`), a mesma fonte de verdade do resto do fluxo de pagamento.
 
 **Reserva e pagamento**
+
 - Mapa de assentos interativo por seção, com o mapa atualizando sozinho a cada 5s (outro cliente reservando aparece quase em tempo real).
 - Hold de 7 minutos com contador regressivo visível; cancelamento manual do hold antes de pagar, sem precisar esperar o tempo todo acabar.
 - Pagamento simulado (cartão + saldo, ver acima), com tela de aprovado e de recusado.
 - Rótulo acima do mapa muda de "Palco" pra "Tela" automaticamente quando o evento é um filme (fonte TMDb).
 
 **Ingressos**
+
 - QR code assinado (JWT) por ingresso, mais um código curto de 6 dígitos como alternativa de digitação.
 - Link de compartilhamento público (`/t/:shareSlug`) — quem recebe o link vê o QR sem precisar de login.
 - "Meus ingressos" agrupado por evento (abas Ativos/Passados), com paginação dentro de cada evento quando passa de 4 ingressos.
 - **Cancelar um ingresso já pago** (botão "Cancelar ingresso" em cada ingresso válido), com reembolso do valor total em saldo — só disponível antes do evento acontecer e antes de o ingresso ter sido validado na portaria. Libera o assento na hora pra outra pessoa comprar.
 
 **Portaria**
+
 - Leitura por câmera ou digitação manual do código curto.
 - 4 desfechos com tela cheia colorida por status: válido, inválido, já utilizado (mostra quando/quem validou antes), evento errado (mostra pra qual evento o ingresso é válido).
 - Busca por nome no seletor de evento.
 - Histórico dos ingressos que aquele funcionário já validou, agrupado por evento, com paginação.
+- Busca server-side por nome do evento, sem limitar o filtro à página atualmente carregada.
+- Exportação CSV das próprias validações, com filtro opcional, cabeçalho compatível com planilhas e proteção contra fórmula maliciosa; a rota continua restrita a `GATE_STAFF`.
 
 **Navegação**
+
 - Barra inferior fixa no mobile, com destaque do item ativo e atalhos por papel (cliente/organizador/portaria têm itens diferentes).
 
 ## Rodando localmente
@@ -146,13 +156,13 @@ Nenhum dos dois lados precisa do Postgres/Docker rodando pra testar — o backen
 
 ```bash
 cd backend
-npm test                 # 237 testes unitários (Jest)
-npm run test:e2e         # 7 testes e2e (sobem a aplicação de verdade, ainda com Prisma mockado)
+npm test                 # 241 testes unitários (Jest)
+npm run test:e2e         # 10 testes e2e (sobem a aplicação de verdade, ainda com Prisma mockado)
 ```
 
 ```bash
 cd frontend
-npm test                 # 57 testes de lógica e componente (Vitest + Testing Library)
+npm test                 # 61 testes de lógica e componente (Vitest + Testing Library)
 npm run typecheck        # checa as páginas dinâmicas sem depender de tipos gerados pelo build
 npm run test:watch       # mesma coisa, mas observando arquivos — útil enquanto se escreve um teste novo
 ```
