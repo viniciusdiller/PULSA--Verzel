@@ -20,6 +20,7 @@ import { SectionsFieldArray } from "@/components/organizer/sections-field-array"
 import { sectionSchema, sectionsToPriceCents, type SectionFormValues } from "@/lib/event-section-schema";
 import { EVENTS_MAX_CAPACITY } from "@/lib/event-constants";
 import type { EventSummary } from "@/types/event";
+import type { AsyncRouteProps } from "@/types/next-page";
 
 const editSchema = z.object({
   description: z.string().min(10, "Descreva o evento em pelo menos 10 caracteres"),
@@ -34,7 +35,7 @@ function sectionsEqual(a: SectionFormValues[], b: SectionFormValues[]) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export default function EditEventPage(props: PageProps<"/organizer/[eventId]/edit">) {
+export default function EditEventPage(props: AsyncRouteProps<{ eventId: string }>) {
   const { eventId } = use(props.params);
   const { data: event, isLoading } = useMyEventQuery(eventId);
 

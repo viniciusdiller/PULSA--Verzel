@@ -27,8 +27,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCentsToBRL, formatEventDateTime } from "@/lib/format";
+import type { AsyncRouteProps } from "@/types/next-page";
 
-export default function OrganizerEventDetailPage(props: PageProps<"/organizer/[eventId]">) {
+export default function OrganizerEventDetailPage(props: AsyncRouteProps<{ eventId: string }>) {
   const { eventId } = use(props.params);
   const router = useRouter();
   const { data: event, isLoading } = useMyEventQuery(eventId);

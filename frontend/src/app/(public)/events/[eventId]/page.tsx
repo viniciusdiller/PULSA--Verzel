@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { EventDetailClient } from "./event-detail-client";
 import { formatCentsToBRL } from "@/lib/format";
+import type { AsyncRouteProps } from "@/types/next-page";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api";
 
@@ -30,7 +31,7 @@ async function fetchEvent(eventId: string): Promise<EventForMetadata | null> {
 }
 
 export async function generateMetadata(
-  props: PageProps<"/events/[eventId]">,
+  props: AsyncRouteProps<{ eventId: string }>,
 ): Promise<Metadata> {
   const { eventId } = await props.params;
   const event = await fetchEvent(eventId);
@@ -50,7 +51,7 @@ export async function generateMetadata(
   };
 }
 
-export default async function EventDetailPage(props: PageProps<"/events/[eventId]">) {
+export default async function EventDetailPage(props: AsyncRouteProps<{ eventId: string }>) {
   const { eventId } = await props.params;
   const event = await fetchEvent(eventId);
 

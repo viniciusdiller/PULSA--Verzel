@@ -4,8 +4,9 @@ import { use } from "react";
 import { useTicketByShareSlugQuery } from "@/hooks/use-tickets";
 import { TicketCard } from "@/components/tickets/ticket-card";
 import { PageLoader } from "@/components/ui/page-loader";
+import type { AsyncRouteProps } from "@/types/next-page";
 
-export default function SharedTicketPage(props: PageProps<"/t/[shareSlug]">) {
+export default function SharedTicketPage(props: AsyncRouteProps<{ shareSlug: string }>) {
   const { shareSlug } = use(props.params);
   const { data: ticket, isLoading, isError } = useTicketByShareSlugQuery(shareSlug);
 

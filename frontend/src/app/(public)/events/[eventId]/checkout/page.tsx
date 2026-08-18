@@ -35,6 +35,7 @@ import {
 import { formatCentsToBRL } from "@/lib/format";
 import type { Seat } from "@/types/event";
 import type { PayResult, Reservation } from "@/types/reservation";
+import type { AsyncRouteProps } from "@/types/next-page";
 
 const paymentSchema = z.object({
   cardNumber: z.string(),
@@ -49,7 +50,7 @@ function extractErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export default function CheckoutPage(props: PageProps<"/events/[eventId]/checkout">) {
+export default function CheckoutPage(props: AsyncRouteProps<{ eventId: string }>) {
   const { eventId } = use(props.params);
   const { user, isLoading: authLoading } = useAuth();
 
