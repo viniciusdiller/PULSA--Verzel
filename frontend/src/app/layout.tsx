@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { PendingCancellationNotice } from "@/components/pending-cancellation-notice";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 
 // Display/heading — "cartaz de show": condensada o suficiente pra nomes
 // longos de line-up sem perder impacto (ver identidade PULSA no plano).
@@ -26,6 +27,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://projeto-de-desenvolvimento-verzel.vercel.app",
+  ),
   title: "PULSA — Ingressos para festivais, festas e grandes jogos",
   description: "Publique eventos, reserve seu lugar, receba seu ingresso.",
 };
@@ -44,6 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <SiteFooter />
           <MobileBottomNav />
           <PendingCancellationNotice />
+          <CookieConsentBanner />
         </Providers>
       </body>
     </html>

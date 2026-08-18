@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-border/60 py-10">
@@ -7,6 +9,9 @@ export function SiteFooter() {
         <p className="mt-4 text-xs">
           Projeto desenvolvido para o desafio técnico Elite Dev — Verzel, 2026.
         </p>
+        <Link href="/privacidade" className="mt-2 inline-block text-xs underline underline-offset-2">
+          Política de privacidade
+        </Link>
       </div>
     </footer>
   );
