@@ -7,7 +7,7 @@
  * contra polling abusivo, enumeração de links e brute force.
  */
 export const RATE_LIMITS = {
-  login: { limit: 5, ttl: 60_000 },
+  login: { limit: 10, ttl: 60_000 },
   catalogSearch: { limit: 30, ttl: 60_000 },
   catalogDetail: { limit: 20, ttl: 60_000 },
   publicEventList: { limit: 30, ttl: 60_000 },

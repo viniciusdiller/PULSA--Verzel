@@ -163,7 +163,7 @@ O workflow [`quality.yml`](.github/workflows/quality.yml) roda em todo `push` pa
 
 A auditoria detalhada que originou os ajustes desta branch está em [`docs/REVIEW-2026-08.md`](docs/REVIEW-2026-08.md). O override de `deepmerge-ts` no `backend/package.json` corrige a vulnerabilidade transitiva observada sem fazer downgrade do Prisma.
 
-Os endpoints de maior exposição possuem limites específicos por IP, além do teto global de 60 requisições por minuto: login (5/min), eventos públicos (30–40/min), mapa de assentos (30/min) e ingresso compartilhado (20/min). O catálogo externo mantém seus limites próprios, pois é uma superfície autenticada que também protege as chaves de terceiros. O e2e comprova respostas `429` no login, na vitrine pública e no compartilhamento.
+Os endpoints de maior exposição possuem limites específicos por IP, além do teto global de 60 requisições por minuto: login (10/min), eventos públicos (30–40/min), mapa de assentos (30/min) e ingresso compartilhado (20/min). O catálogo externo mantém seus limites próprios, pois é uma superfície autenticada que também protege as chaves de terceiros. O e2e comprova respostas `429` no login, na vitrine pública e no compartilhamento.
 
 ## Deploy (Render + backend, Vercel + frontend)
 

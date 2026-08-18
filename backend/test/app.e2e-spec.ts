@@ -86,7 +86,7 @@ describe('App (e2e)', () => {
   it('POST /api/auth/login responde 429 depois de exceder o limite por IP', async () => {
     const loginPayload = { email: 'a@a.com', password: '123456' };
 
-    for (let attempt = 1; attempt <= 5; attempt += 1) {
+    for (let attempt = 1; attempt <= 10; attempt += 1) {
       await request(app.getHttpServer())
         .post('/api/auth/login')
         .send(loginPayload)
