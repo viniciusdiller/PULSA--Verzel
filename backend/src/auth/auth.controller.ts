@@ -17,6 +17,7 @@ import { ProfileDto } from './dto/profile.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { RATE_LIMITS } from '../common/throttling/rate-limit.constants';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -28,7 +29,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   // Throttle mais restritivo que o padrão global (60/min) especificamente
   // no login, para dificultar força bruta de senha por IP.
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: RATE_LIMITS.login })
   @ApiOperation({
     summary: 'Login com email e senha, retorna JWT + dados do usuário',
   })

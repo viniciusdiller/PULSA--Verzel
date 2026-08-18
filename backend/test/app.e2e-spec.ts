@@ -23,7 +23,18 @@ describe('App (e2e)', () => {
         $disconnect: jest.fn().mockResolvedValue(undefined),
         onModuleInit: jest.fn(),
         onModuleDestroy: jest.fn(),
+        $transaction: jest.fn((operations: Promise<unknown>[]) =>
+          Promise.all(operations),
+        ),
         user: { findUnique: jest.fn() },
+        event: {
+          findMany: jest.fn().mockResolvedValue([]),
+          count: jest.fn().mockResolvedValue(0),
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+        ticket: { findUnique: jest.fn().mockResolvedValue(null) },
+        seat: { findMany: jest.fn().mockResolvedValue([]) },
+        reservation: { findMany: jest.fn().mockResolvedValue([]) },
       })
       .compile();
 
@@ -70,5 +81,41 @@ describe('App (e2e)', () => {
       .post('/api/auth/login')
       .send({ email: 'a@a.com', password: '123456', role: 'ORGANIZER' })
       .expect(400);
+  });
+
+  it('POST /api/auth/login responde 429 depois de exceder o limite por IP', async () => {
+    const loginPayload = { email: 'a@a.com', password: '123456' };
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send(loginPayload)
+        .expect(401);
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send(loginPayload)
+      .expect(429);
+  });
+
+  it('GET /api/tickets/:shareSlug responde 429 ao exceder o limite de consulta pública', async () => {
+    for (let attempt = 1; attempt <= 20; attempt += 1) {
+      await request(app.getHttpServer())
+        .get('/api/tickets/share-slug-de-teste')
+        .expect(404);
+    }
+
+    await request(app.getHttpServer())
+      .get('/api/tickets/share-slug-de-teste')
+      .expect(429);
+  });
+
+  it('GET /api/events responde 429 ao exceder o limite da vitrine pública', async () => {
+    for (let attempt = 1; attempt <= 30; attempt += 1) {
+      await request(app.getHttpServer()).get('/api/events').expect(200);
+    }
+
+    await request(app.getHttpServer()).get('/api/events').expect(429);
   });
 });

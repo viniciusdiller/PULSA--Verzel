@@ -61,7 +61,7 @@ Mapa direto do enunciado (`Desafio-Elite-Dev-2026`) pro que está implementado, 
 - ✅ Cancelamento com devolução ao estoque (reserva em hold antes do pagamento).
 - ✅ Mapa de assentos "em tempo real" via polling de 5s.
 - ✅ Docker Compose (Postgres local persistente).
-- ✅ Testes automatizados — 227 testes unitários + 4 e2e no backend (Jest) e 53 testes de lógica/componente no frontend (Vitest + Testing Library) (ver "Testes" abaixo e `AI_USAGE.md`).
+- ✅ Testes automatizados — 237 testes unitários + 7 e2e no backend (Jest) e 57 testes de lógica/componente no frontend (Vitest + Testing Library), incluindo a jornada de checkout (hold, pagamento aprovado/recusado, saldo e expiração) (ver "Testes" abaixo e `AI_USAGE.md`).
 - ✅ Aplicação publicada.
 - ✅ SEO básico (`sitemap.xml`, `robots.txt`) — não pedido pelo desafio, ver "Home e catálogo" abaixo.
 - ✅ Aviso de cookies (LGPD/GDPR) — não pedido pelo desafio, ver "Home e catálogo" abaixo.
@@ -146,13 +146,13 @@ Nenhum dos dois lados precisa do Postgres/Docker rodando pra testar — o backen
 
 ```bash
 cd backend
-npm test                 # 227 testes unitários (Jest)
-npm run test:e2e         # 4 testes e2e (sobem a aplicação de verdade, ainda com Prisma mockado)
+npm test                 # 237 testes unitários (Jest)
+npm run test:e2e         # 7 testes e2e (sobem a aplicação de verdade, ainda com Prisma mockado)
 ```
 
 ```bash
 cd frontend
-npm test                 # 53 testes de lógica e componente (Vitest + Testing Library)
+npm test                 # 57 testes de lógica e componente (Vitest + Testing Library)
 npm run typecheck        # checa as páginas dinâmicas sem depender de tipos gerados pelo build
 npm run test:watch       # mesma coisa, mas observando arquivos — útil enquanto se escreve um teste novo
 ```
@@ -162,6 +162,8 @@ npm run test:watch       # mesma coisa, mas observando arquivos — útil enquan
 O workflow [`quality.yml`](.github/workflows/quality.yml) roda em todo `push` para `main` e em todo Pull Request. Ele instala dependências com `npm ci`, executa lint não-mutante, type-check, testes unitários, e2e, build de produção e auditoria de dependências. O e2e usa uma configuração isolada de teste e não exige PostgreSQL porque o Prisma é mockado nesse conjunto.
 
 A auditoria detalhada que originou os ajustes desta branch está em [`docs/REVIEW-2026-08.md`](docs/REVIEW-2026-08.md). O override de `deepmerge-ts` no `backend/package.json` corrige a vulnerabilidade transitiva observada sem fazer downgrade do Prisma.
+
+Os endpoints de maior exposição possuem limites específicos por IP, além do teto global de 60 requisições por minuto: login (5/min), eventos públicos (30–40/min), mapa de assentos (30/min) e ingresso compartilhado (20/min). O catálogo externo mantém seus limites próprios, pois é uma superfície autenticada que também protege as chaves de terceiros. O e2e comprova respostas `429` no login, na vitrine pública e no compartilhamento.
 
 ## Deploy (Render + backend, Vercel + frontend)
 

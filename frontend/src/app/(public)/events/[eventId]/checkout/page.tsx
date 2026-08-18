@@ -50,8 +50,7 @@ function extractErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export default function CheckoutPage(props: AsyncRouteProps<{ eventId: string }>) {
-  const { eventId } = use(props.params);
+export function CheckoutContent({ eventId }: { eventId: string }) {
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: seatMap, isLoading: seatMapLoading } = useSeatMapQuery(eventId);
@@ -391,4 +390,9 @@ export default function CheckoutPage(props: AsyncRouteProps<{ eventId: string }>
       </AnimatePresence>
     </main>
   );
+}
+
+export default function CheckoutPage(props: AsyncRouteProps<{ eventId: string }>) {
+  const { eventId } = use(props.params);
+  return <CheckoutContent eventId={eventId} />;
 }

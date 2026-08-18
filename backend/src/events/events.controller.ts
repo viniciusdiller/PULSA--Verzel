@@ -12,6 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -23,6 +24,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { RATE_LIMITS } from '../common/throttling/rate-limit.constants';
 
 @ApiTags('events')
 @Controller('events')
@@ -140,6 +142,7 @@ export class EventsController {
 
   @Public()
   @Get()
+  @Throttle({ default: RATE_LIMITS.publicEventList })
   @ApiOperation({
     summary: 'Lista eventos publicados, com busca por título/cidade',
   })
@@ -149,6 +152,7 @@ export class EventsController {
 
   @Public()
   @Get('featured')
+  @Throttle({ default: RATE_LIMITS.publicFeaturedEvents })
   @ApiOperation({
     summary:
       'Lista os eventos em destaque na home pública (no máx. 4, ou 4 por fonte se `source` for informado)',
@@ -198,6 +202,7 @@ export class EventsController {
 
   @Public()
   @Get(':id')
+  @Throttle({ default: RATE_LIMITS.publicEventDetail })
   @ApiOperation({
     summary:
       'Detalhe de um evento publicado (rascunhos não aparecem aqui — o organizador usa /events/organizer/mine)',

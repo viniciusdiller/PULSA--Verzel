@@ -5,6 +5,7 @@ import { Role } from '@prisma/client';
 import { CatalogService } from './catalog.service';
 import { CatalogSearchQueryDto } from './dto/catalog-search-query.dto';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RATE_LIMITS } from '../common/throttling/rate-limit.constants';
 
 @ApiTags('catalog')
 @ApiBearerAuth()
@@ -18,7 +19,7 @@ export class CatalogController {
   // apertado que o throttle global de 60/min, mas com folga suficiente pra
   // uma sessão real de busca (o front já faz debounce de 450ms por tecla,
   // então isso aqui é rede de segurança contra abuso, não o limite normal).
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle({ default: RATE_LIMITS.catalogSearch })
   @ApiOperation({
     summary:
       'Busca no catálogo externo — shows (Ticketmaster Discovery) ou filmes (TMDb), conforme `source`',
@@ -28,7 +29,7 @@ export class CatalogController {
   }
 
   @Get('events/:externalId')
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle({ default: RATE_LIMITS.catalogDetail })
   @ApiOperation({
     summary:
       'Detalhe de um evento do catálogo externo, para pré-preencher a publicação',

@@ -1,11 +1,13 @@
 import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { ReservationsService } from './reservations.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { RATE_LIMITS } from '../common/throttling/rate-limit.constants';
 
 @ApiTags('reservations')
 @Controller('events/:eventId')
@@ -14,6 +16,7 @@ export class EventSeatsController {
 
   @Public()
   @Get('seatmap')
+  @Throttle({ default: RATE_LIMITS.publicSeatMap })
   @ApiOperation({
     summary:
       'Mapa de assentos do evento com status atual (disponível/reservado/vendido)',

@@ -1,11 +1,13 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { TicketsService } from './tickets.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { RATE_LIMITS } from '../common/throttling/rate-limit.constants';
 
 @ApiTags('tickets')
 @Controller('tickets')
@@ -24,6 +26,7 @@ export class TicketsController {
 
   @Public()
   @Get(':shareSlug')
+  @Throttle({ default: RATE_LIMITS.sharedTicket })
   @ApiOperation({
     summary: 'Ingresso por link de compartilhamento (sem autenticação)',
   })
