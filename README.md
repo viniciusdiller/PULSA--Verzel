@@ -153,8 +153,15 @@ npm run test:e2e         # 4 testes e2e (sobem a aplicação de verdade, ainda c
 ```bash
 cd frontend
 npm test                 # 53 testes de lógica e componente (Vitest + Testing Library)
+npm run typecheck        # checa as páginas dinâmicas sem depender de tipos gerados pelo build
 npm run test:watch       # mesma coisa, mas observando arquivos — útil enquanto se escreve um teste novo
 ```
+
+### Quality gate automático
+
+O workflow [`quality.yml`](.github/workflows/quality.yml) roda em todo `push` para `main` e em todo Pull Request. Ele instala dependências com `npm ci`, executa lint não-mutante, type-check, testes unitários, e2e, build de produção e auditoria de dependências. O e2e usa uma configuração isolada de teste e não exige PostgreSQL porque o Prisma é mockado nesse conjunto.
+
+A auditoria detalhada que originou os ajustes desta branch está em [`docs/REVIEW-2026-08.md`](docs/REVIEW-2026-08.md). O override de `deepmerge-ts` no `backend/package.json` corrige a vulnerabilidade transitiva observada sem fazer downgrade do Prisma.
 
 ## Deploy (Render + backend, Vercel + frontend)
 
