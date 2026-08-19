@@ -15,7 +15,7 @@ import { formatCentsToBRL, formatEventDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LoaderSignalBars } from "@/components/ui/loader-signal-bars";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -102,7 +102,7 @@ const underlineInputClass =
 
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuth();
-  const { data: profile, isLoading } = useProfileQuery();
+  const { data: profile, isLoading, isError } = useProfileQuery();
   const updateProfileMutation = useUpdateProfileMutation();
   // Só CUSTOMER acumula/gasta saldo (estorno de evento cancelado) —
   // mesmo corte já aplicado no site-header, aqui replicado pra não
@@ -157,10 +157,22 @@ export default function ProfilePage() {
     }
   }
 
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
         <PageLoader />
+      </main>
+    );
+  }
+
+  if (isError || !profile) {
+    return (
+      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Não foi possível carregar seu perfil agora.</p>
+          </CardContent>
+        </Card>
       </main>
     );
   }
