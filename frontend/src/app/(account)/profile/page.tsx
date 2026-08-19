@@ -169,8 +169,12 @@ export default function ProfilePage() {
     return (
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
         <Card>
-          <CardContent className="py-12 text-center">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
             <p className="text-muted-foreground">Não foi possível carregar seu perfil agora.</p>
+            <Button variant="outline" onClick={logout}>
+              <LogOut className="size-4" />
+              Sair da conta
+            </Button>
           </CardContent>
         </Card>
       </main>
